@@ -4,131 +4,56 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"strconv"
+	"path"
+	"runtime"
 	"strings"
 
-	"github.com/zoul0813/go-forth/pkg/dict"
-	"github.com/zoul0813/go-forth/pkg/stack"
+	"github.com/zoul0813/go-forth/pkg/vm"
+)
+
+const (
+	VERSION = "0.0.0-alpha"
 )
 
 func main() {
-	fmt.Println("Go Forth")
+	fmt.Printf("Go Forth %v, Copyright (C) 2024 David Higgins <zoul0813@me.com>\nCompiled with %v\n", VERSION, runtime.Version())
 
-	stack := stack.NewStack(1024)
-	dict := dict.NewDict()
-	compiling := false
-	var defining string
-	var definition string
+	cwd, _ := os.Getwd()
+	corePath := path.Join(cwd, "cmd/core.f")
+	fmt.Printf("Core: %v\n", corePath)
+	core, err := os.ReadFile(corePath)
+	if err != nil {
+		fmt.Println("Failed to load core.f: ", err)
+		return
+	}
+
+	machine := vm.NewVM()
 
 	scanner := bufio.NewScanner(os.Stdin)
 
-	var process func(string) bool
-	process = func(words string) bool {
-		for _, word := range strings.Split(words, " ") {
-			switch word {
-			// arithmetic
-			case "+":
-				// add
-				right := stack.Pop()
-				left := stack.Pop()
-				stack.Push(left + right)
-			case "-":
-				// sub
-				right := stack.Pop()
-				left := stack.Pop()
-				stack.Push(left - right)
-			case "*":
-				// mul
-				right := stack.Pop()
-				left := stack.Pop()
-				stack.Push(left * right)
-			case "/":
-				// div
-				right := stack.Pop()
-				left := stack.Pop()
-				stack.Push(left / right)
-			// stack
-			case "dup":
-				stack.Push(stack.Peek())
-			case "drop":
-				stack.Pop()
-			case "nip":
-				outer := stack.Pop()
-				stack.Pop()
-				stack.Push(outer)
-			case "rot":
-				outer := stack.Pop()
-				inner := stack.Pop()
-				value := stack.Pop()
-				stack.Push(outer)
-				stack.Push(inner)
-				stack.Push(value)
-			// output
-			case ".":
-				// print
-				i := stack.Pop()
-				fmt.Printf("%d", i)
-			case ".s":
-				// inspect
-				fmt.Printf("<%d> %v", stack.Index, stack.Values[:stack.Index])
-			// compiler
-			case ":":
-				defining = ""
-				compiling = true
-			// system
-			case "bye":
-				fmt.Printf("bye!\n")
-				return false
-			default:
-				def, ok := dict.Words[word]
-				if !ok {
-					if i, err := strconv.Atoi(word); err == nil {
-						stack.Push(i)
-					}
-				} else {
-					process(def)
-				}
-			}
+	for _, line := range strings.Split(string(core), "\n") {
+		if !strings.HasPrefix(line, "\\") {
+			machine.Process(line)
 		}
-		return true
+		// fmt.Printf("DEFINE: %v\n", line)
 	}
 
+	machine.SetMode(vm.Standard)
+	fmt.Printf("Type 'bye' to exit\n\n")
 	fmt.Print("> ")
 	for scanner.Scan() {
-
 		running := true
 		input := scanner.Text()
+		words := input
 
-		words := strings.Split(strings.ToLower(input), " ")
-
-		for _, word := range words {
-			if compiling {
-				if word == ";" {
-					ok := dict.Define(defining, definition)
-					if !ok {
-						fmt.Printf("error: failed to define %v ", defining)
-					} else {
-						fmt.Printf("defined %v", defining)
-					}
-					compiling = false
-				} else {
-					if defining == "" {
-						defining = word
-					} else {
-						definition += " " + word
-					}
-				}
-			} else {
-				running = process(word)
-
-				if !running {
-					break
-				}
-			}
+		running, err = machine.Process(words)
+		if err != nil {
+			fmt.Printf("%v", err)
 		}
 		if !running {
 			break
 		}
+
 		fmt.Printf("  ok\n> ")
 	}
 
