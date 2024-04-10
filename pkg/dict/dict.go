@@ -2,26 +2,22 @@ package dict
 
 import (
 	"strings"
+
+	"github.com/zoul0813/go-forth/pkg/definitions"
 )
 
-type Definition struct {
-	Name      string
-	Definiton string
-	Fn        func()
-}
-
 type Dict struct {
-	Words map[string]*Definition
+	Words map[string]*definitions.Definition
 }
 
 func NewDict() *Dict {
 	return &Dict{
-		Words: make(map[string]*Definition),
+		Words: make(map[string]*definitions.Definition),
 	}
 }
 
 func (d *Dict) Define(word, definition string) bool {
-	d.Words[strings.ToLower(word)] = &Definition{
+	d.Words[strings.ToLower(word)] = &definitions.Definition{
 		Name:      word,
 		Definiton: definition,
 		Fn:        nil,
@@ -29,16 +25,16 @@ func (d *Dict) Define(word, definition string) bool {
 	return true
 }
 
-// func (d *Dict) DefineCore(word, definition string, fn func()) bool {
-// 	d.Words[strings.ToLower(word)] = &Word{
-// 		Name:      word,
-// 		Definiton: "<core>",
-// 		Fn:        fn,
-// 	}
-// 	return true
-// }
+func (d *Dict) DefineCore(word, definition string, fn func()) bool {
+	d.Words[strings.ToLower(word)] = &definitions.Definition{
+		Name:      word,
+		Definiton: "<core>",
+		Fn:        fn,
+	}
+	return true
+}
 
-func (d *Dict) Lookup(word string) (*Definition, bool) {
+func (d *Dict) Lookup(word string) (*definitions.Definition, bool) {
 	w, ok := d.Words[strings.ToLower(word)]
 	return w, ok
 }
