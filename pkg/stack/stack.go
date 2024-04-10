@@ -18,6 +18,14 @@ func (s *Stack) Clear() {
 	s.Index = 0
 }
 
+func (s *Stack) Put(i int, b int) {
+	s.Values[i] = b
+}
+
+func (s *Stack) Get(i int) int {
+	return s.Values[i]
+}
+
 func (s *Stack) Push(b int) {
 	s.Values[s.Index] = b
 	s.Index++

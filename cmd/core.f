@@ -1,6 +1,8 @@
 : emit (emit) ;
 : . emit ;
 
+: 1+ 1 + ;
+: 1- 1 - ;
 
 
 \ DUP     [x]
@@ -32,3 +34,20 @@
 \ depth     [x]
 : showstack (showstack) ;
 : .s showstack ;
+
+: CREATE ( -- a-addr )
+  VARIABLE
+;
+
+: VARIABLE ( "<spaces>name" -- )
+  HERE
+  0 ,
+  CONSTANT
+;
+
+\ TODO: implement constant in Forth?
+\ : CONSTANT ( x "<spaces>name" -- )
+\   >R : >R
+\   POSTPONE LITERAL
+\   POSTPONE ;
+\ ;

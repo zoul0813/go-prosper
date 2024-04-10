@@ -33,7 +33,7 @@ func main() {
 
 	for _, line := range strings.Split(string(core), "\n") {
 		if !strings.HasPrefix(line, "\\") {
-			machine.Process(line)
+			machine.Process(line, "")
 		}
 		// fmt.Printf("DEFINE: %v\n", line)
 	}
@@ -42,16 +42,16 @@ func main() {
 	fmt.Printf("Type 'bye' to exit\n\n")
 	fmt.Print("> ")
 	for scanner.Scan() {
-		running := true
 		input := scanner.Text()
 		words := input
 
-		running, err = machine.Process(words)
+		_, err = machine.Process(words, "")
 		if err != nil {
-			fmt.Printf("%v", err)
-		}
-		if !running {
-			break
+			if err.Error() == "bye" {
+				break
+			}
+			fmt.Printf("process error: %v", err)
+
 		}
 
 		fmt.Printf("  ok\n> ")

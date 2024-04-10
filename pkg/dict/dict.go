@@ -1,6 +1,7 @@
 package dict
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/zoul0813/go-forth/pkg/definitions"
@@ -11,26 +12,57 @@ type Dict struct {
 }
 
 func NewDict() *Dict {
-	return &Dict{
-		Words: make(map[string]*definitions.Definition),
+	dict :=
+		&Dict{
+			Words: make(map[string]*definitions.Definition),
+		}
+
+	for word, fn := range definitions.Core {
+		dict.DefineCore(word, "", fn)
 	}
+
+	return dict
 }
 
-func (d *Dict) Define(word, definition string) bool {
+func (d *Dict) Define(word, definition string) error {
+	name := strings.ToLower(word)
+
+	existing, ok := d.Words[name]
+	if (ok && !existing.Internal) || !ok {
+		d.Words[name] = &definitions.Definition{
+			Name:      word,
+			Definiton: definition,
+			Fn:        nil,
+			Internal:  false,
+		}
+		return nil
+	}
+	if ok && existing.Internal {
+		return fmt.Errorf("can not override internal definition")
+	}
+	return fmt.Errorf("failed to define see")
+}
+
+func (d *Dict) DefineSystem(word string) bool {
 	d.Words[strings.ToLower(word)] = &definitions.Definition{
 		Name:      word,
-		Definiton: definition,
+		Definiton: "<system>",
 		Fn:        nil,
+		Internal:  true,
 	}
 	return true
 }
 
-func (d *Dict) DefineCore(word, definition string, fn func()) bool {
-	d.Words[strings.ToLower(word)] = &definitions.Definition{
+func (d *Dict) DefineCore(word, definition string, fn definitions.DefinitionFn) bool {
+	def := &definitions.Definition{
 		Name:      word,
 		Definiton: "<core>",
 		Fn:        fn,
+		Internal:  true,
 	}
+
+	d.Words[strings.ToLower(word)] = def
+
 	return true
 }
 
