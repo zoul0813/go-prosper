@@ -36,6 +36,90 @@ var Core = map[string]DefinitionFn{
 		m.Stack().Push(left / right)
 		return false, nil
 	},
+	"mod": func(m memory) (bool, error) {
+		// div
+		right := m.Stack().Pop()
+		left := m.Stack().Pop()
+		m.Stack().Push(left % right)
+		return false, nil
+	},
+	"/mod": func(m memory) (bool, error) {
+		// div
+		right := m.Stack().Pop()
+		left := m.Stack().Pop()
+		quotient := left / right
+		modulus := left % right
+		m.Stack().Push(quotient)
+		m.Stack().Push(modulus)
+		return false, nil
+	},
+	">": func(m memory) (bool, error) {
+		right := m.Stack().Pop()
+		left := m.Stack().Pop()
+		if left > right {
+			m.Stack().Push(-1)
+		} else {
+			m.Stack().Push(0)
+		}
+		return false, nil
+	},
+	"<": func(m memory) (bool, error) {
+		right := m.Stack().Pop()
+		left := m.Stack().Pop()
+		if left < right {
+			m.Stack().Push(-1)
+		} else {
+			m.Stack().Push(0)
+		}
+		return false, nil
+	},
+	"=": func(m memory) (bool, error) {
+		right := m.Stack().Pop()
+		left := m.Stack().Pop()
+		if left == right {
+			m.Stack().Push(-1)
+		} else {
+			m.Stack().Push(0)
+		}
+		return false, nil
+	},
+	// bitwise
+	"&": func(m memory) (bool, error) {
+		right := m.Stack().Pop()
+		left := m.Stack().Pop()
+		m.Stack().Push(left & right)
+		return false, nil
+	},
+	"|": func(m memory) (bool, error) {
+		right := m.Stack().Pop()
+		left := m.Stack().Pop()
+		m.Stack().Push(left | right)
+		return false, nil
+	},
+	"^": func(m memory) (bool, error) {
+		right := m.Stack().Pop()
+		left := m.Stack().Pop()
+		m.Stack().Push(left ^ right)
+		return false, nil
+	},
+	"&^": func(m memory) (bool, error) {
+		right := m.Stack().Pop()
+		left := m.Stack().Pop()
+		m.Stack().Push(left &^ right)
+		return false, nil
+	},
+	"<<": func(m memory) (bool, error) {
+		right := m.Stack().Pop()
+		left := m.Stack().Pop()
+		m.Stack().Push(left << right)
+		return false, nil
+	},
+	">>": func(m memory) (bool, error) {
+		right := m.Stack().Pop()
+		left := m.Stack().Pop()
+		m.Stack().Push(left >> right)
+		return false, nil
+	},
 	"negate": func(m memory) (bool, error) {
 		m.Stack().Push(-m.Stack().Pop())
 		return false, nil
@@ -105,7 +189,9 @@ var Core = map[string]DefinitionFn{
 		return false, nil
 	},
 	",": func(m memory) (bool, error) {
-		m.DataSpace().Push(m.Stack().Pop())
+		index := m.DataSpace().Index
+		m.DataSpace().Allot(1)
+		m.DataSpace().Put(index, m.Stack().Pop())
 		return true, nil
 	},
 	"!": func(m memory) (bool, error) {
@@ -129,7 +215,7 @@ var Core = map[string]DefinitionFn{
 	},
 	"allot": func(m memory) (bool, error) {
 		size := m.Stack().Pop()
-		m.DataSpace().Index += size
+		m.DataSpace().Allot(size)
 		// todo: error check overflow?
 		return false, nil
 	},
@@ -157,6 +243,10 @@ var Core = map[string]DefinitionFn{
 	},
 	"(showstack)": func(m memory) (bool, error) {
 		fmt.Printf("<%d> %v ", m.Stack().Index, m.Stack().Values[:m.Stack().Index])
+		return false, nil
+	},
+	"(showreturn)": func(m memory) (bool, error) {
+		fmt.Printf("<%d> %v ", m.ReturnStack().Index, m.ReturnStack().Values[:m.ReturnStack().Index])
 		return false, nil
 	},
 

@@ -1,14 +1,16 @@
 package stack
 
 type Stack struct {
-	Index  int
-	Values []int
+	Index     int
+	Values    []int
+	stackSize int
 }
 
 func NewStack(size int) *Stack {
 	stack := &Stack{
-		Index:  0,
-		Values: make([]int, size),
+		Index:     0,
+		Values:    make([]int, size),
+		stackSize: size,
 	}
 
 	return stack
@@ -62,4 +64,38 @@ func (s *Stack) Rotate() {
 	s.Push(outer)
 	s.Push(inner)
 	s.Push(value)
+}
+
+func (s *Stack) Allot(size int) (bool, error) {
+	s.Index += size
+	// fmt.Printf("allot:\n")
+	// fmt.Printf("    size: %v\n", size)
+	// fmt.Printf("     idx: %v\n", s.Index)
+	// fmt.Printf("     cap: %v\n", cap(s.Values))
+	// fmt.Printf("     len: %v\n", len(s.Values))
+	// if we need more space, increase stack by stackSize
+	if s.Index > cap(s.Values)-1 {
+		grow := s.stackSize // amount to grow
+
+		// grow until we've added enough to cover the new allot size
+		for (cap(s.Values) + grow - 1) < s.Index {
+			grow += s.stackSize
+		}
+		// fmt.Printf("    grow: %v\n", grow)
+		// make a new slice
+		new := make([]int, len(s.Values), cap(s.Values)+grow)
+		// copy the old slice into the new slice
+		copy(new, s.Values)
+
+		// update values
+		s.Values = new[0:cap(new)]
+		// fmt.Printf("  resize:\n")
+		// fmt.Printf("    size: %v\n", size)
+		// fmt.Printf("     idx: %v\n", s.Index)
+		// fmt.Printf("     cap: %v\n", cap(s.Values))
+		// fmt.Printf("     len: %v\n", len(s.Values))
+		// fmt.Printf("     new: %v\n", cap(new))
+		// fmt.Printf("    nlen: %v\n", len(new))
+	}
+	return true, nil
 }
