@@ -8,42 +8,42 @@ import (
 
 var Core = map[string]DefinitionFn{
 	// arithmetic
-	"+": func(m memory) (bool, error) {
+	"+": func(m memory) (int, error) {
 		// add
 		right := m.Stack().Pop()
 		left := m.Stack().Pop()
 		m.Stack().Push(left + right)
-		return false, nil
+		return 0, nil
 	},
-	"-": func(m memory) (bool, error) {
+	"-": func(m memory) (int, error) {
 		// sub
 		right := m.Stack().Pop()
 		left := m.Stack().Pop()
 		m.Stack().Push(left - right)
-		return false, nil
+		return 0, nil
 	},
-	"*": func(m memory) (bool, error) {
+	"*": func(m memory) (int, error) {
 		// mul
 		right := m.Stack().Pop()
 		left := m.Stack().Pop()
 		m.Stack().Push(left * right)
-		return false, nil
+		return 0, nil
 	},
-	"/": func(m memory) (bool, error) {
+	"/": func(m memory) (int, error) {
 		// div
 		right := m.Stack().Pop()
 		left := m.Stack().Pop()
 		m.Stack().Push(left / right)
-		return false, nil
+		return 0, nil
 	},
-	"mod": func(m memory) (bool, error) {
+	"mod": func(m memory) (int, error) {
 		// div
 		right := m.Stack().Pop()
 		left := m.Stack().Pop()
 		m.Stack().Push(left % right)
-		return false, nil
+		return 0, nil
 	},
-	"/mod": func(m memory) (bool, error) {
+	"/mod": func(m memory) (int, error) {
 		// div
 		right := m.Stack().Pop()
 		left := m.Stack().Pop()
@@ -51,9 +51,9 @@ var Core = map[string]DefinitionFn{
 		modulus := left % right
 		m.Stack().Push(quotient)
 		m.Stack().Push(modulus)
-		return false, nil
+		return 0, nil
 	},
-	">": func(m memory) (bool, error) {
+	">": func(m memory) (int, error) {
 		right := m.Stack().Pop()
 		left := m.Stack().Pop()
 		if left > right {
@@ -61,9 +61,9 @@ var Core = map[string]DefinitionFn{
 		} else {
 			m.Stack().Push(0)
 		}
-		return false, nil
+		return 0, nil
 	},
-	"<": func(m memory) (bool, error) {
+	"<": func(m memory) (int, error) {
 		right := m.Stack().Pop()
 		left := m.Stack().Pop()
 		if left < right {
@@ -71,9 +71,9 @@ var Core = map[string]DefinitionFn{
 		} else {
 			m.Stack().Push(0)
 		}
-		return false, nil
+		return 0, nil
 	},
-	"=": func(m memory) (bool, error) {
+	"=": func(m memory) (int, error) {
 		right := m.Stack().Pop()
 		left := m.Stack().Pop()
 		if left == right {
@@ -81,183 +81,174 @@ var Core = map[string]DefinitionFn{
 		} else {
 			m.Stack().Push(0)
 		}
-		return false, nil
+		return 0, nil
 	},
 	// bitwise
-	"&": func(m memory) (bool, error) {
+	"&": func(m memory) (int, error) {
 		right := m.Stack().Pop()
 		left := m.Stack().Pop()
 		m.Stack().Push(left & right)
-		return false, nil
+		return 0, nil
 	},
-	"|": func(m memory) (bool, error) {
+	"|": func(m memory) (int, error) {
 		right := m.Stack().Pop()
 		left := m.Stack().Pop()
 		m.Stack().Push(left | right)
-		return false, nil
+		return 0, nil
 	},
-	"^": func(m memory) (bool, error) {
+	"^": func(m memory) (int, error) {
 		right := m.Stack().Pop()
 		left := m.Stack().Pop()
 		m.Stack().Push(left ^ right)
-		return false, nil
+		return 0, nil
 	},
-	"&^": func(m memory) (bool, error) {
+	"&^": func(m memory) (int, error) {
 		right := m.Stack().Pop()
 		left := m.Stack().Pop()
 		m.Stack().Push(left &^ right)
-		return false, nil
+		return 0, nil
 	},
-	"<<": func(m memory) (bool, error) {
+	"<<": func(m memory) (int, error) {
 		right := m.Stack().Pop()
 		left := m.Stack().Pop()
 		m.Stack().Push(left << right)
-		return false, nil
+		return 0, nil
 	},
-	">>": func(m memory) (bool, error) {
+	">>": func(m memory) (int, error) {
 		right := m.Stack().Pop()
 		left := m.Stack().Pop()
 		m.Stack().Push(left >> right)
-		return false, nil
+		return 0, nil
 	},
-	"negate": func(m memory) (bool, error) {
+	"negate": func(m memory) (int, error) {
 		m.Stack().Push(-m.Stack().Pop())
-		return false, nil
+		return 0, nil
 	},
-	"abs": func(m memory) (bool, error) {
+	"abs": func(m memory) (int, error) {
 		abs := int(math.Abs(float64(m.Stack().Pop())))
 		m.Stack().Push(abs)
-		return false, nil
+		return 0, nil
 	},
-	"min": func(m memory) (bool, error) {
+	"min": func(m memory) (int, error) {
 		n1 := float64(m.Stack().Pop())
 		n2 := float64(m.Stack().Pop())
 		min := int(math.Min(n1, n2))
 		m.Stack().Push(min)
-		return false, nil
+		return 0, nil
 	},
-	"max": func(m memory) (bool, error) {
+	"max": func(m memory) (int, error) {
 		n1 := float64(m.Stack().Pop())
 		n2 := float64(m.Stack().Pop())
 		max := int(math.Max(n1, n2))
 		m.Stack().Push(max)
-		return false, nil
+		return 0, nil
 	},
 
 	// stack
-	"depth": func(m memory) (bool, error) {
+	"depth": func(m memory) (int, error) {
 		m.Stack().Push(m.Stack().Index)
-		return false, nil
+		return 0, nil
 	},
-	"dup": func(m memory) (bool, error) {
+	"dup": func(m memory) (int, error) {
 		m.Stack().Dup()
-		return false, nil
+		return 0, nil
 	},
-	"drop": func(m memory) (bool, error) {
+	"drop": func(m memory) (int, error) {
 		m.Stack().Pop()
-		return false, nil
+		return 0, nil
 	},
-	"swap": func(m memory) (bool, error) {
+	"swap": func(m memory) (int, error) {
 		m.Stack().Swap()
-		return false, nil
+		return 0, nil
 	},
-	"over": func(m memory) (bool, error) {
+	"over": func(m memory) (int, error) {
 		value := m.Stack().PeekN(2)
 		m.Stack().Push(value)
-		return false, nil
+		return 0, nil
 	},
-	"rot": func(m memory) (bool, error) {
+	"rot": func(m memory) (int, error) {
 		m.Stack().Rotate()
-		return false, nil
+		return 0, nil
 	},
-	">r": func(m memory) (bool, error) {
+	">r": func(m memory) (int, error) {
 		m.ReturnStack().Push(m.Stack().Pop())
-		return false, nil
+		return 0, nil
 	},
-	"r>": func(m memory) (bool, error) {
+	"r>": func(m memory) (int, error) {
 		m.Stack().Push(m.ReturnStack().Pop())
-		return false, nil
+		return 0, nil
 	},
-	"clear": func(m memory) (bool, error) {
+	"clear": func(m memory) (int, error) {
 		m.Stack().Clear()
-		return false, nil
+		return 0, nil
 	},
 
 	// data space
-	"here": func(m memory) (bool, error) {
+	"here": func(m memory) (int, error) {
 		m.Stack().Push(m.DataSpace().Index)
-		return false, nil
+		return 0, nil
 	},
-	",": func(m memory) (bool, error) {
+	",": func(m memory) (int, error) {
 		index := m.DataSpace().Index
 		m.DataSpace().Allot(1)
 		m.DataSpace().Put(index, m.Stack().Pop())
-		return true, nil
+		// return 0, nil
+		return 1, nil
 	},
-	"!": func(m memory) (bool, error) {
+	"!": func(m memory) (int, error) {
 		addr := m.Stack().Pop()
 		value := m.Stack().Pop()
 		m.DataSpace().Put(addr, value)
-		return false, nil
+		return 0, nil
 	},
-	"@": func(m memory) (bool, error) {
+	"@": func(m memory) (int, error) {
 		addr := m.Stack().Pop()
 		value := m.DataSpace().Get(addr)
 		m.Stack().Push(value)
-		return false, nil
+		return 0, nil
 	},
-	"cells": func(m memory) (bool, error) {
+	"cells": func(m memory) (int, error) {
 		n := m.Stack().Pop()
 		// todo: make this work on a byte level?
 		// m.Stack().Push(n * (strconv.IntSize / 8))
 		m.Stack().Push(n * 1)
-		return false, nil
+		return 0, nil
 	},
-	"allot": func(m memory) (bool, error) {
+	"allot": func(m memory) (int, error) {
 		size := m.Stack().Pop()
 		m.DataSpace().Allot(size)
 		// todo: error check overflow?
-		return false, nil
+		return 0, nil
 	},
 
 	// time
-	"ms": func(m memory) (bool, error) {
+	"ms": func(m memory) (int, error) {
 		ms := m.Stack().Pop()
 		time.Sleep(time.Duration(ms) * time.Millisecond)
-		return false, nil
+		return 0, nil
 	},
-	"utime": func(m memory) (bool, error) {
+	"utime": func(m memory) (int, error) {
 		ms := time.Now().UnixNano()
 		us := int(ms / 1000)
 
 		m.Stack().Push(us)
 		m.Stack().Push(0) // todo: why does gforth do this?
-		return false, nil
+		return 0, nil
 	},
 
 	// output
-	"(emit)": func(m memory) (bool, error) {
+	"(emit)": func(m memory) (int, error) {
 		i := m.Stack().Pop()
 		fmt.Printf("%d ", i)
-		return false, nil
+		return 0, nil
 	},
-	"(showstack)": func(m memory) (bool, error) {
+	"(showstack)": func(m memory) (int, error) {
 		fmt.Printf("<%d> %v ", m.Stack().Index, m.Stack().Values[:m.Stack().Index])
-		return false, nil
+		return 0, nil
 	},
-	"(showreturn)": func(m memory) (bool, error) {
+	"(showreturn)": func(m memory) (int, error) {
 		fmt.Printf("<%d> %v ", m.ReturnStack().Index, m.ReturnStack().Values[:m.ReturnStack().Index])
-		return false, nil
-	},
-
-	// branching
-	"branch": func(m memory) (bool, error) {
-		// unconditional branch
-		return false, notYetImplemented("")
-	},
-	"branch?": func(m memory) (bool, error) {
-		// condition branch
-		return false, notYetImplemented("")
+		return 0, nil
 	},
 }
 

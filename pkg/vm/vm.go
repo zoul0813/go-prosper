@@ -12,6 +12,7 @@ import (
 const (
 	STACK_SIZE      = 2048
 	DATA_SPACE_SIZE = 1024
+	LOOP_SIZE       = 64
 )
 
 type Mode int
@@ -19,6 +20,11 @@ type Mode int
 const (
 	Initializing Mode = iota
 	Standard
+)
+
+var (
+	loops     = make([]int, LOOP_SIZE)
+	loopIndex = 0
 )
 
 type VM struct {
@@ -45,6 +51,8 @@ func NewVM() *VM {
 	}
 
 	// internal words, can not be overwritten
+	vm.Memory.Dict().DefineSystem("branch")
+	vm.Memory.Dict().DefineSystem("branch?")
 	vm.Memory.Dict().DefineSystem("constant")
 	vm.Memory.Dict().DefineSystem("words")
 	vm.Memory.Dict().DefineSystem("(debug)")
@@ -75,27 +83,30 @@ func getNext(words []string, index int, next string) (string, bool) {
 	return word, word != ""
 }
 
-func (vm *VM) Process(words string, next string) (bool, error) {
-	splitWords := strings.Split(words, " ")
-	skipNext := false
+func (vm *VM) Process(words string, next string) (int, error) {
+	splitWords := strings.Fields(words)
 	comment := false
-	for wordIndex, word := range splitWords {
+	skipBy := 0
+
+	for wordIndex := 0; wordIndex < len(splitWords); wordIndex++ {
+		word := splitWords[wordIndex]
+		// fmt.Printf("word: '%v', index: %v, words: \"%v\"\n", word, wordIndex, words)
 		if word == "" {
 			continue
 		}
-		if comment || skipNext {
+		if comment {
 			// fmt.Printf("skipping: %v (%v, %v)\n", word, skipNext, comment)
-			skipNext = false
 			if word == ")" {
+				skipBy = 0
 				comment = false
 			}
 			continue
 		}
 		if vm.compiling {
 			if word == ";" {
-				// fmt.Printf("Done.\n")
+				// fmt.Printf("Done. loops: %v:%v, %v %v\n", len(loops), cap(loops), loopIndex, loops)
 				vm.EndCompile()
-				err := vm.Memory.Dict().Define(vm.defining, vm.definition)
+				err := vm.Memory.Dict().Define(strings.TrimSpace(vm.defining), strings.TrimSpace(vm.definition))
 				if err != nil {
 					fmt.Printf("error: %v (%v)", err, vm.defining)
 				} else {
@@ -109,22 +120,68 @@ func (vm *VM) Process(words string, next string) (bool, error) {
 					vm.defining = word
 				} else {
 					// fmt.Printf("Compiling... %v\n", word)
-					vm.definition += " " + word
+					switch word {
+					default:
+						vm.definition += " " + word
+					}
 				}
 			}
 		} else {
 			switch strings.ToLower(word) {
 			// data space
 			case "constant":
-				skipNext = true
 				name, ok := getNext(splitWords, wordIndex+1, next)
-				// fmt.Printf("constant: \"%v\" (%v) %d, \"%v\"\n", name, strings.Join(splitWords, ", "), wordIndex+1, next)
+				skipBy = 1
+				// fmt.Printf("constant: \"%v\" (%v) %d, \"%v\"\n", name, strings.Join(splitWords, " "), wordIndex+1, next)
 				if !ok {
 					fmt.Printf("attempt to use zero-length string as a name")
 					continue
 				}
 				value := vm.Memory.Stack().Pop()
 				vm.Memory.Dict().Define(name, fmt.Sprintf("%d", value))
+
+			// branching
+			case "branch":
+				// unconditional branch
+				offset, ok := getNext(splitWords, wordIndex+1, next)
+				skipBy = 1
+				// if !vm.compiling {
+				// 	fmt.Printf("compile-only word")
+				// }
+				if !ok {
+					fmt.Printf("attempt to use nil branch offset")
+					continue
+				}
+				skip, err := strconv.Atoi(offset)
+				if err != nil {
+					fmt.Printf("attempt to use non-int as branch offset")
+					continue
+				}
+				nw, _ := getNext(splitWords, wordIndex+1, next)
+				fmt.Printf("branch: %v:%v, %v", offset, skip, nw)
+				skipBy += skip
+			case "branch?":
+				// condition branch
+				condition := vm.Memory.Stack().Pop()
+				offset, ok := getNext(splitWords, wordIndex+1, next)
+				skipBy = 1
+				// if !vm.compiling {
+				// 	fmt.Printf("compile-only word")
+				// }
+				if !ok {
+					fmt.Printf("attempt to use nil branch offset")
+					continue
+				}
+				if condition == 0 {
+					skip, err := strconv.Atoi(offset)
+					if err != nil {
+						fmt.Printf("attempt to use non-int as branch offset")
+						continue
+					}
+					nw, _ := getNext(splitWords, wordIndex+1, next)
+					fmt.Printf("branch?: %v:%v, %v", offset, skip, nw)
+					skipBy += skip
+				}
 			// compiler
 			case ":":
 				vm.Compile()
@@ -134,8 +191,8 @@ func (vm *VM) Process(words string, next string) (bool, error) {
 			case "(":
 				comment = true
 			case "see":
-				skipNext = true
 				lookup, ok := getNext(splitWords, wordIndex+1, next)
+				skipBy = 1
 				// fmt.Printf("see: \"%v\" %v\n", lookup, ok)
 				if !ok {
 					fmt.Printf("undefined word, missing")
@@ -157,7 +214,7 @@ func (vm *VM) Process(words string, next string) (bool, error) {
 				fmt.Printf("  Return: <%d> %v\n", vm.Memory.ReturnStack().Index, vm.Memory.ReturnStack().Values[:vm.Memory.ReturnStack().Index])
 				fmt.Printf("  Mode: %v\n", vm.compiling)
 			case "bye":
-				return false, fmt.Errorf("bye")
+				return 0, fmt.Errorf("bye")
 			default:
 				def, ok := vm.Memory.Dict().Lookup(word)
 				// fmt.Printf(" > \"%v\" (%v, %v, %v) => \"%v\"\n", word, ok, skipNext, comment, def)
@@ -170,12 +227,12 @@ func (vm *VM) Process(words string, next string) (bool, error) {
 						if i, err := strconv.ParseUint(hex, 16, strconv.IntSize); err == nil {
 							vm.Memory.Stack().Push(int(i))
 						} else {
-							return false, fmt.Errorf("undefined word\n>>>%v<<<", word)
+							return 1, fmt.Errorf("undefined word\n>>>%v<<<", word)
 						}
 					} else if i, err := strconv.Atoi(word); err == nil {
 						vm.Memory.Stack().Push(i)
 					} else {
-						return false, fmt.Errorf("undefined word\n>>>%v<<<", word)
+						return 1, fmt.Errorf("undefined word\n>>>%v<<<", word)
 					}
 				} else {
 					if def.Fn != nil {
@@ -184,16 +241,18 @@ func (vm *VM) Process(words string, next string) (bool, error) {
 						nextWord, _ := getNext(splitWords, wordIndex+1, next)
 						skip, err := vm.Process(def.Definiton, nextWord)
 						if err != nil {
-							return false, err
+							return 1, err
 						}
-						// fmt.Printf("skipNext: %v (%v) \"%v\"\n", skip, skipNext, nextWord)
-						skipNext = skip
+						// fmt.Printf("skipNext: %v (%v) \"%v\"\n", skip, wordIndex, nextWord)
+						skipBy = skip
 					}
 				}
 			}
 		}
+		wordIndex += skipBy
+		skipBy = 0
 	}
-	return skipNext, nil
+	return skipBy, nil
 }
 
 func (vm *VM) Compile() {

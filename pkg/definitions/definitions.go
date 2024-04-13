@@ -15,7 +15,7 @@ type Processor interface {
 	Process(string) (bool, error)
 }
 
-type DefinitionFn func(m memory) (bool, error)
+type DefinitionFn func(m memory) (int, error)
 
 type Definition struct {
 	Name      string

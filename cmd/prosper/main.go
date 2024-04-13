@@ -19,7 +19,7 @@ func main() {
 	fmt.Printf("Go Forth %v, Copyright (C) 2024 David Higgins <zoul0813@me.com>\nCompiled with %v\n", VERSION, runtime.Version())
 
 	cwd, _ := os.Getwd()
-	corePath := path.Join(cwd, "cmd/core.f")
+	corePath := path.Join(cwd, "cmd/prosper/core.f")
 	fmt.Printf("Core: %v\n", corePath)
 	core, err := os.ReadFile(corePath)
 	if err != nil {
@@ -45,15 +45,13 @@ func main() {
 		input := scanner.Text()
 		words := input
 
-		_, err = machine.Process(words, "")
+		_, err := machine.Process(words, "")
 		if err != nil {
 			if err.Error() == "bye" {
 				break
 			}
 			fmt.Printf("process error: %v", err)
-
 		}
-
 		fmt.Printf("  ok\n> ")
 	}
 

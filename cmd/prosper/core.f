@@ -51,6 +51,8 @@
 : SHOWRETURN (showreturn) ;
 : .R SHOWRETURN ;
 
+: test branch 2 1 2 3 4 5 6 ;
+: test? branch? 4 1 . branch 2 0 . ;
 
 : VARIABLE ( "<spaces>name" -- )
   HERE
