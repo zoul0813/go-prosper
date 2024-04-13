@@ -54,6 +54,16 @@
 : test branch 2 1 2 3 4 5 6 ;
 : test? branch? 4 1 . branch 2 0 . ;
 
+\ : back
+\   branch 2
+\   branch? 5
+\   20 .
+\   0
+\   branch -7
+\   1 + .s
+\   ;
+\ 15 back
+
 : VARIABLE ( "<spaces>name" -- )
   HERE
   0 ,

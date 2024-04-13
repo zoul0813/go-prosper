@@ -157,9 +157,12 @@ func (vm *VM) Process(words string, next string) (int, error) {
 					fmt.Printf("attempt to use non-int as branch offset")
 					continue
 				}
-				nw, _ := getNext(splitWords, wordIndex+1, next)
-				fmt.Printf("branch: %v:%v, %v", offset, skip, nw)
+				// TODO: implement "debug" flag for outputting these branch locations?
+				// nw, _ := getNext(splitWords, wordIndex+2, next)
+				// fmt.Printf("branch: %v:%v, %v\n", offset, skip, nw)
 				skipBy += skip
+				// dst, _ := getNext(splitWords, wordIndex+skipBy, next)
+				// fmt.Printf("  next: %v\n", dst)
 			case "branch?":
 				// condition branch
 				condition := vm.Memory.Stack().Pop()
@@ -178,9 +181,12 @@ func (vm *VM) Process(words string, next string) (int, error) {
 						fmt.Printf("attempt to use non-int as branch offset")
 						continue
 					}
-					nw, _ := getNext(splitWords, wordIndex+1, next)
-					fmt.Printf("branch?: %v:%v, %v", offset, skip, nw)
+					// TODO: implement "debug" flag for outputting these branch locations?
+					// nw, _ := getNext(splitWords, wordIndex+2, next)
+					// fmt.Printf("branch?: %v:%v, %v\n", offset, skip, nw)
 					skipBy += skip
+					// dst, _ := getNext(splitWords, wordIndex+skipBy, next)
+					// fmt.Printf("  next: %v\n", dst)
 				}
 			// compiler
 			case ":":
