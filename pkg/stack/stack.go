@@ -46,8 +46,8 @@ func (s *Stack) PeekN(index int) int {
 	return s.Values[s.Index-index]
 }
 
-func (s *Stack) Dup() {
-	s.Push(s.Peek())
+func (s *Stack) Pick(i int) {
+	s.Push(s.PeekN(i + 1))
 }
 
 func (s *Stack) Swap() {

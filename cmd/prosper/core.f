@@ -1,5 +1,9 @@
 : emit (emit) ;
 : . emit ;
+: hex (hex) ;
+: decimal (decimal) ;
+: octal (octal) ;
+: binary (binary) ;
 
 : 0< 0 < ;
 : 0= 0 = ;
@@ -25,13 +29,13 @@
 
 \ >R      [x]
 \ R>      [x]
-: R@ ( -- N )R> DUP >R ;
+: R@ ( -- N ) R> DUP >R ;
 
 : AND ( N1 N2 -- N3 ) & ;
 : OR ( N1 N2 -- N3 ) | ;
 : XOR ( N1 N2 -- N3 ) ^ ;
 : -BIT ( N1 N2 -- N3 ) &^ ;
-: NOP ( -- );
+: NOP ( -- ) ;
 
 : 2DUP OVER OVER ;
 : 2DROP DROP DROP ;
@@ -42,7 +46,7 @@
 \ 2ROT     [ ]
 : 2>R SWAP >R >R ;
 : 2R> R> R> SWAP ;
-\ 2r@      [ ]
+: 2R@ 2R> 2DUP 2>R ;
 
 \ clear     [x]
 \ depth     [x]
@@ -51,18 +55,45 @@
 : SHOWRETURN (showreturn) ;
 : .R SHOWRETURN ;
 
-: test branch 2 1 2 3 4 5 6 ;
-: test? branch? 4 1 . branch 2 0 . ;
+\ : test branch 2 1 2 3 4 5 6 ;
+\ : test? ?branch 4 1 . branch 2 0 . ;
+\ : test 10 begin 1 - dup . dup until ;
+: dotest 10 5 do i . loop ;
+: cols
+  4 0
+  do
+    dup ( .s .r cr )
+    i ( .s .r cr )
+    . . cr
+    ( .s .r cr )
+  loop
+  ;
+: rows
+  4 0
+  do
+    i ( .s .r cr )
+    cols
+    drop
+    cr cr
+  loop
+  ;
 
-\ : back
-\   branch 2
-\   branch? 5
-\   20 .
-\   0
-\   branch -7
-\   1 + .s
-\   ;
-\ 15 back
+\ 10 5
+\ 2>R
+\ 2R@ SWAP DROP .
+\ 2R> 1 + 2DUP <> 2>R
+\ ?branch -12
+\ 2R> 2DROP
+
+\: back
+\  branch 2
+\  ?branch 5
+\  20 .
+\  0
+\  branch -7
+\  1 + .s
+\  ;
+\15 back
 
 : VARIABLE ( "<spaces>name" -- )
   HERE

@@ -69,7 +69,7 @@
 // 			case "branch":
 // 				// unconditional branch
 // 				notYetImplemented(word)
-// 			case "branch?":
+// 			case "?branch":
 // 				// condition branch
 // 				notYetImplemented(word)
 // 			// compiler

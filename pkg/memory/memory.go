@@ -10,6 +10,7 @@ type Memory struct {
 	returnStack *stack.Stack
 	dataSpace   *stack.Stack
 	dict        *dict.Dict
+	numberBase  int
 }
 
 func NewMemory(stackSize int, dataSize int) *Memory {
@@ -18,6 +19,7 @@ func NewMemory(stackSize int, dataSize int) *Memory {
 		returnStack: stack.NewStack(stackSize),
 		dataSpace:   stack.NewStack(dataSize),
 		dict:        dict.NewDict(),
+		numberBase:  10,
 	}
 }
 
@@ -34,6 +36,14 @@ func (m Memory) DataSpace() *stack.Stack {
 
 func (m Memory) Dict() *dict.Dict {
 	return m.dict
+}
+
+func (m Memory) NumberBase() int {
+	return m.numberBase
+}
+
+func (m *Memory) SetNumberBase(base int) {
+	m.numberBase = base
 }
 
 // func (m *Memory) Allot(size int) error {

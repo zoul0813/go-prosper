@@ -3,6 +3,8 @@ package definitions
 import (
 	"fmt"
 	"math"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -83,6 +85,17 @@ var Core = map[string]DefinitionFn{
 		}
 		return 0, nil
 	},
+	"<>": func(m memory) (int, error) {
+		right := m.Stack().Pop()
+		left := m.Stack().Pop()
+		if left != right {
+			m.Stack().Push(-1)
+		} else {
+			m.Stack().Push(0)
+		}
+		return 0, nil
+	},
+
 	// bitwise
 	"&": func(m memory) (int, error) {
 		right := m.Stack().Pop()
@@ -149,8 +162,13 @@ var Core = map[string]DefinitionFn{
 		m.Stack().Push(m.Stack().Index)
 		return 0, nil
 	},
+	"pick": func(m memory) (int, error) {
+		index := m.Stack().Pop()
+		m.Stack().Pick(index)
+		return 0, nil
+	},
 	"dup": func(m memory) (int, error) {
-		m.Stack().Dup()
+		m.Stack().Pick(0)
 		return 0, nil
 	},
 	"drop": func(m memory) (int, error) {
@@ -239,15 +257,26 @@ var Core = map[string]DefinitionFn{
 	// output
 	"(emit)": func(m memory) (int, error) {
 		i := m.Stack().Pop()
-		fmt.Printf("%d ", i)
+		n := strconv.FormatInt(int64(i), m.NumberBase())
+		// fmt.Printf("base: %d, ", m.NumberBase())
+		fmt.Printf("%v ", n)
 		return 0, nil
 	},
 	"(showstack)": func(m memory) (int, error) {
-		fmt.Printf("<%d> %v ", m.Stack().Index, m.Stack().Values[:m.Stack().Index])
+		stack := make([]string, m.Stack().Index)
+		for i, n := range m.Stack().Values[:m.Stack().Index] {
+			stack[i] = strconv.FormatInt(int64(n), m.NumberBase())
+		}
+		fmt.Printf("S: <%d> [%v] ", m.Stack().Index, strings.Join(stack, " "))
 		return 0, nil
 	},
 	"(showreturn)": func(m memory) (int, error) {
-		fmt.Printf("<%d> %v ", m.ReturnStack().Index, m.ReturnStack().Values[:m.ReturnStack().Index])
+		stack := make([]string, m.ReturnStack().Index)
+		for i, n := range m.ReturnStack().Values[:m.ReturnStack().Index] {
+			stack[i] = strconv.FormatInt(int64(n), m.NumberBase())
+		}
+
+		fmt.Printf("R: <%d> [%v] ", m.ReturnStack().Index, strings.Join(stack, " "))
 		return 0, nil
 	},
 }

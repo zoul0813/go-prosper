@@ -24,7 +24,7 @@ func NewDict() *Dict {
 	return dict
 }
 
-func (d *Dict) Define(word, definition string) error {
+func (d *Dict) Define(word, definition string, compiled string) error {
 	name := strings.ToLower(word)
 
 	existing, ok := d.Words[name]
@@ -32,6 +32,7 @@ func (d *Dict) Define(word, definition string) error {
 		d.Words[name] = &definitions.Definition{
 			Name:      word,
 			Definiton: definition,
+			Compiled:  compiled,
 			Fn:        nil,
 			Internal:  false,
 		}
