@@ -7,8 +7,8 @@ variable vector
 ( random number generator )
 variable seed
 $10450405 constant generator
-: rnd		seed @ generator um* drop 1+ dup seed ! ;
-: random	rnd um* nip ;
+: rnd		seed @ generator 1+ dup seed ! ;
+: random	rnd nip ;
 utime drop seed !
 
 ( grid )

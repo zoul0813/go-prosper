@@ -111,3 +111,19 @@
 \   POSTPONE LITERAL
 \   POSTPONE ;
 \ ;
+
+
+
+\ 2048
+variable score 	112 score ! ;
+variable gptr   0 gptr ! ;
+variable flag ;
+variable vector ;
+
+variable seed ;
+$10450405 constant generator
+: rnd		seed @ generator 1+ dup seed ! ;
+: random	rnd nip ;
+utime drop seed ! ;
+
+: .score	 ." Score: " score @ 5 .r ;

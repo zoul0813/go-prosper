@@ -44,7 +44,6 @@ func main() {
 	for scanner.Scan() {
 		input := scanner.Text()
 		words := input
-
 		_, err := machine.Process(words, "")
 		if err != nil {
 			if err.Error() == "bye" {

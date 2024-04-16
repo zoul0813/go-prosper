@@ -279,6 +279,13 @@ var Core = map[string]DefinitionFn{
 		fmt.Printf("R: <%d> [%v] ", m.ReturnStack().Index, strings.Join(stack, " "))
 		return 0, nil
 	},
+	".r": func(m memory) (int, error) {
+		pad := m.Stack().Pop()
+		n := m.Stack().Pop()
+		// '     0'
+		fmt.Printf(fmt.Sprintf("%%%dd", pad), n)
+		return 0, nil
+	},
 }
 
 func notYetImplemented(word string) error {

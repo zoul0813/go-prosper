@@ -178,6 +178,26 @@ func (vm *VM) Process(words string, next string) (int, error) {
 			case ".\"":
 				// figure out how to process the strings from here ...
 				// need access to the original words
+				index := strings.Index(words, word)
+				str := make([]rune, len(words)-len(word)-index)
+				if index >= 0 {
+					for _, c := range words[index+len(word)+1:] {
+						if c != '"' {
+							str = append(str, c)
+						} else {
+							break
+						}
+					}
+					sw := strings.Fields(string(str))
+					skipBy += len(sw) + 1
+					nw, _ := getNext(splitWords, wordIndex+skipBy+1, next)
+					if nw == "\"" {
+						skipBy++
+					}
+					fmt.Printf("%s (next: %v)", string(str), nw)
+				} else {
+					fmt.Printf("string not found: \"%v\" in \"%v\"", word, words)
+				}
 
 			// branching
 			case "branch":
