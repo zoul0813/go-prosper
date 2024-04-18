@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -93,6 +92,19 @@ var Core = map[string]DefinitionFn{
 		} else {
 			m.Stack().Push(0)
 		}
+		return 0, nil
+	},
+	"um*": func(m memory) (int, error) {
+		right := int64(m.Stack().Pop())
+		left := int64(m.Stack().Pop())
+		product := left * right
+
+		var x, y int
+		x = int(product >> 32)
+		y = int(product & 0xFFFFFFFF)
+
+		m.Stack().Push(y)
+		m.Stack().Push(x)
 		return 0, nil
 	},
 
@@ -200,18 +212,37 @@ var Core = map[string]DefinitionFn{
 		m.Stack().Clear()
 		return 0, nil
 	},
+	"fill": func(m memory) (int, error) {
+		chr := m.Stack().Pop()
+		u := m.Stack().Pop()
+		addr := m.Stack().Pop()
+
+		for i := 0; i < u; i++ {
+			m.DataSpace().Put(addr+i, chr)
+		}
+
+		return 0, nil
+	},
 
 	// data space
 	"here": func(m memory) (int, error) {
 		m.Stack().Push(m.DataSpace().Index)
+		// showStack(m)
+		// fmt.Printf(" here: t %T, & %p, i %d, %v\n", m.Stack(), m.Stack(), m.Stack().Index, m.Stack().Values[:m.Stack().Index])
 		return 0, nil
 	},
 	",": func(m memory) (int, error) {
+		value := m.Stack().Pop()
 		index := m.DataSpace().Index
 		m.DataSpace().Allot(1)
-		m.DataSpace().Put(index, m.Stack().Pop())
-		// return 0, nil
-		return 1, nil
+		m.DataSpace().Put(index, value)
+		// showStack(m)
+
+		// fmt.Printf("  ds,: t %T, & %p, i %d, %v\n", m.DataSpace(), m.DataSpace(), m.DataSpace().Index, m.DataSpace().Values[:m.DataSpace().Index])
+		// fmt.Printf("    ,: t %T, & %p, i %d, %v\n", m.Stack(), m.Stack(), m.Stack().Index, m.Stack().Values[:m.Stack().Index])
+
+		return 0, nil
+		// return 1, nil
 	},
 	"!": func(m memory) (int, error) {
 		addr := m.Stack().Pop()
@@ -263,29 +294,28 @@ var Core = map[string]DefinitionFn{
 		return 0, nil
 	},
 	"(showstack)": func(m memory) (int, error) {
-		stack := make([]string, m.Stack().Index)
-		for i, n := range m.Stack().Values[:m.Stack().Index] {
-			stack[i] = strconv.FormatInt(int64(n), m.NumberBase())
-		}
-		fmt.Printf("S: <%d> [%v] ", m.Stack().Index, strings.Join(stack, " "))
-		return 0, nil
+		return showStack(m)
 	},
 	"(showreturn)": func(m memory) (int, error) {
-		stack := make([]string, m.ReturnStack().Index)
-		for i, n := range m.ReturnStack().Values[:m.ReturnStack().Index] {
-			stack[i] = strconv.FormatInt(int64(n), m.NumberBase())
-		}
-
-		fmt.Printf("R: <%d> [%v] ", m.ReturnStack().Index, strings.Join(stack, " "))
-		return 0, nil
+		return showReturn(m)
 	},
-	".r": func(m memory) (int, error) {
+	"i.r": func(m memory) (int, error) {
 		pad := m.Stack().Pop()
 		n := m.Stack().Pop()
 		// '     0'
 		fmt.Printf(fmt.Sprintf("%%%dd", pad), n)
 		return 0, nil
 	},
+}
+
+func showStack(m memory) (int, error) {
+	m.Stack().Print("", m.NumberBase())
+	return 0, nil
+}
+
+func showReturn(m memory) (int, error) {
+	m.ReturnStack().Print("", m.NumberBase())
+	return 0, nil
 }
 
 func notYetImplemented(word string) error {

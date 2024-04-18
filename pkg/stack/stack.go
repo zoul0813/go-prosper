@@ -1,5 +1,11 @@
 package stack
 
+import (
+	"fmt"
+	"strconv"
+	"strings"
+)
+
 type Stack struct {
 	Index     int
 	Values    []int
@@ -20,6 +26,19 @@ func (s *Stack) Clear() {
 	s.Index = 0
 }
 
+func (s *Stack) Print(prefix string, base int) {
+	stack := make([]string, s.Index)
+	for i, n := range s.Values[:s.Index] {
+		stack[i] = strconv.FormatInt(int64(n), base)
+	}
+
+	if prefix != "" {
+		fmt.Printf("%s: <%d> [%v] ", prefix, s.Index, strings.Join(stack, " "))
+	} else {
+		fmt.Printf("<%d> [%v] ", s.Index, strings.Join(stack, " "))
+	}
+}
+
 func (s *Stack) Put(i int, b int) {
 	s.Values[i] = b
 }
@@ -29,6 +48,7 @@ func (s *Stack) Get(i int) int {
 }
 
 func (s *Stack) Push(b int) {
+	// fmt.Printf(" push: %d\n", b)
 	s.Values[s.Index] = b
 	s.Index++
 }

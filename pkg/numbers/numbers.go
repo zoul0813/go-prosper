@@ -40,9 +40,10 @@ func Parse(word string, base int) (int, bool) {
 	}
 
 	if base > 0 {
-		if i, err := strconv.ParseUint(word[num:length], base, strconv.IntSize); err == nil {
+		if i, err := strconv.ParseInt(word[num:length], base, strconv.IntSize); err == nil {
 			return int(i), true
 		} else {
+			// fmt.Printf("error: %v %v %v\n", word, i, err)
 			return 0, false
 		}
 	}

@@ -19,6 +19,7 @@
 
 \ DUP     [x]
 \ ?DUP    [ ]
+: ?DUP DUP 0 <> ?BRANCH 1 DUP ;
 \ DROP    [x]
 \ SWAP    [x]
 \ OVER    [x]
@@ -54,29 +55,34 @@
 : .S SHOWSTACK ;
 : SHOWRETURN (showreturn) ;
 : .R SHOWRETURN ;
+: .SR ." S: " SHOWSTACK ." R: " SHOWRETURN ;
+
+: SPACE ."  " ;
+: SPACES 0 DO SPACE LOOP ;
+: PAGE CR ; \ TODO: temporary, should clear the screen?
+: PAGES 0 DO PAGE LOOP ;
+
+: VARIABLE ( "<spaces>name" -- )
+  HERE
+  0 ,
+  CONSTANT
+;
+
+: CREATE ( -- a-addr )
+  VARIABLE
+;
+
+
+\\\\\\\ TESTS
 
 \ : test branch 2 1 2 3 4 5 6 ;
 \ : test? ?branch 4 1 . branch 2 0 . ;
 \ : test 10 begin 1 - dup . dup until ;
-: dotest 10 5 do i . loop ;
-: cols
-  4 0
-  do
-    dup ( .s .r cr )
-    i ( .s .r cr )
-    . . cr
-    ( .s .r cr )
-  loop
-  ;
-: rows
-  4 0
-  do
-    i ( .s .r cr )
-    cols
-    drop
-    cr cr
-  loop
-  ;
+\ : dotest 10 5 do i . loop ;
+\ : cols 4 0 do dup i . . cr loop ;
+\ : rows 4 0 do i cols drop cr cr loop ;
+
+: test if 10 10 * . ." hello" else 5 5 * . ." goodbye" then ;
 
 \ 10 5
 \ 2>R
@@ -95,16 +101,6 @@
 \  ;
 \15 back
 
-: VARIABLE ( "<spaces>name" -- )
-  HERE
-  0 ,
-  CONSTANT
-;
-
-: CREATE ( -- a-addr )
-  VARIABLE
-;
-
 \ TODO: implement constant in Forth?
 \ : CONSTANT ( x "<spaces>name" -- )
 \   >R : >R
@@ -114,16 +110,66 @@
 
 
 
+\\\\\ 2048 tests
+
 \ 2048
-variable score 	112 score ! ;
-variable gptr   0 gptr ! ;
-variable flag ;
-variable vector ;
+variable score 	112 score !
+variable gptr   0 gptr !
+variable flag
+variable vector
 
-variable seed ;
+\ ( random number generator )
+variable seed
 $10450405 constant generator
-: rnd		seed @ generator 1+ dup seed ! ;
-: random	rnd nip ;
-utime drop seed ! ;
+: rnd		                seed @ generator um* drop 1+ dup seed ! ;
+: random	( cell -- )   rnd um* nip ;
+utime drop seed !
 
-: .score	 ." Score: " score @ 5 .r ;
+\ ( grid )
+create grid 16 cells allot
+: init-grid	grid 16 cells 0 fill ;
+: row-col-box   ( row col -- box )    flag @ if swap then swap 4 * + ;
+: box@          ( u-box -- u-value )  cells grid + @ ;
+: box!          ( u-val u-box -- )    cells grid + ! ;
+: new           ( --  )
+  begin
+    16 random dup
+    box@ 0= if 2 swap box! -1 else drop 0 then
+  until ;
+
+: .score    ."     Score: " score @ 5 i.r ;
+: .row      swap 4 * + box@ ?dup 0= if 3 spaces ." __" else 5 u.r then ;
+: .cols
+  4 0 do
+    dup
+    i .row
+  loop
+  ;
+
+\: .cols
+\  4 0 do
+\    dup .
+\    ." ,"
+\    i .
+\    space
+\  loop
+\  ;
+
+: print-row ." Row: " . ;
+
+: draw
+  page
+  .score
+  cr cr
+  4 0 do ( row )
+    i print-row
+    i .cols
+    cr cr
+  loop
+  ;
+
+
+
+: comma ." ," ;
+: test 5 0 do dup . comma i . space loop ;
+: test2 5 0 do i test cr loop ;

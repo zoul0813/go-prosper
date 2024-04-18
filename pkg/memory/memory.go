@@ -23,6 +23,11 @@ func NewMemory(stackSize int, dataSize int) *Memory {
 	}
 }
 
+func (m *Memory) Recover() {
+	m.stack.Index = 0
+	m.returnStack.Index = 0
+}
+
 func (m Memory) Stack() *stack.Stack {
 	return m.stack
 }
