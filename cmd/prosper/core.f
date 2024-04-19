@@ -59,8 +59,9 @@
 
 : SPACE ."  " ;
 : SPACES 0 DO SPACE LOOP ;
-: PAGE CR ; \ TODO: temporary, should clear the screen?
-: PAGES 0 DO PAGE LOOP ;
+\ : PAGE CR ; \ TODO: temporary, should clear the screen?
+\ : PAGES 0 DO PAGE LOOP ;
+: PAGE (clearscreen) 0 0 (at-xy) ;
 
 : VARIABLE ( "<spaces>name" -- )
   HERE
@@ -112,6 +113,7 @@
 
 \\\\\ 2048 tests
 
+
 \ 2048
 variable score 	112 score !
 variable gptr   0 gptr !
@@ -138,7 +140,7 @@ create grid 16 cells allot
   until ;
 
 : .score    ."     Score: " score @ 5 i.r ;
-: .row      swap 4 * + box@ ?dup 0= if 3 spaces ." __" else 5 u.r then ;
+: .row      swap 4 * + box@ ?dup 0= if 3 spaces ." __" else 5 i.r then ;
 : .cols
   4 0 do
     dup
@@ -146,23 +148,12 @@ create grid 16 cells allot
   loop
   ;
 
-\: .cols
-\  4 0 do
-\    dup .
-\    ." ,"
-\    i .
-\    space
-\  loop
-\  ;
-
-: print-row ." Row: " . ;
 
 : draw
   page
   .score
   cr cr
   4 0 do ( row )
-    i print-row
     i .cols
     cr cr
   loop
@@ -170,6 +161,12 @@ create grid 16 cells allot
 
 
 
-: comma ." ," ;
-: test 5 0 do dup . comma i . space loop ;
-: test2 5 0 do i test cr loop ;
+\ : comma ." ," ;
+\ : test 5 0 do dup . comma i . space loop ;
+\ : test2 5 0 do i test cr loop ;
+\ : test      ." \"hello world\"" ;
+
+\ : test 16 0 do i box@ ?dup 0= if 3 spaces ." __" else . then loop ;
+\ : test if ." hello world" cr cr else ." goodbye" cr cr then ;
+
+\ : .row swap 4 * + box@ ?dup 0= if 3 spaces ." __" else 5 i.r then ;

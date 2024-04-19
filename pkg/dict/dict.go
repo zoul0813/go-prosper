@@ -24,7 +24,7 @@ func NewDict() *Dict {
 	return dict
 }
 
-func (d *Dict) Define(word, definition string, compiled string) error {
+func (d *Dict) Define(word, definition string, compiled []string) error {
 	name := strings.ToLower(word)
 
 	existing, ok := d.Words[name]

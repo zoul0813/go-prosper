@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/zoul0813/go-forth/pkg/memory"
 	"github.com/zoul0813/go-forth/pkg/numbers"
@@ -13,7 +14,7 @@ import (
 const (
 	STACK_SIZE      = 2048
 	DATA_SPACE_SIZE = 1024
-	LOOP_SIZE       = 64
+	// LOOP_SIZE       = 64
 )
 
 type Mode int
@@ -32,18 +33,18 @@ type VM struct {
 
 	compiling  bool
 	defining   string
-	definition string
+	definition []string
 	mode       Mode
 }
 
 func NewVM() *VM {
 	vm := &VM{
 		// ip:          0,
-		Memory:     memory.NewMemory(STACK_SIZE, DATA_SPACE_SIZE),
-		compiling:  false,
-		defining:   "",
-		definition: "",
-		mode:       Initializing,
+		Memory:    memory.NewMemory(STACK_SIZE, DATA_SPACE_SIZE),
+		compiling: false,
+		// defining:   "",
+		// definition: make([]string, 0, STACK_SIZE),
+		mode: Initializing,
 	}
 
 	// temporary
@@ -77,68 +78,96 @@ func NewVM() *VM {
 	return vm
 }
 
-func getNext(words []string, index int, next string) (string, bool) {
+func getWord(words []string, index int, next string) (string, bool) {
 	len := len(words)
-	// fmt.Printf(
-	// 	"getNext: [%v] %d < %d = %v \"%v\"\n",
-	// 	strings.Join(words, ", "),
-	// 	len,
-	// 	index,
-	// 	len < index,
-	// 	next,
-	// )
 	var word string = ""
 	if index < len {
 		word = words[index]
-		// fmt.Printf("index++ \"%v\"\n", word)
 	} else if next != "" {
 		word = next
-		// fmt.Printf("next \"%v\"\n", word)
 	}
-	// fmt.Printf("getNext = (\"%v\", %v)\n", word, word != "")
 	return word, word != ""
 }
 
-func getString(word, words string, stringIndex, wordIndex, skipBy int) (string, int, int) {
-	splitWords := strings.Fields(words)
-	index := len(word) + 1 + stringIndex + strings.Index(words[stringIndex:], word)
-	str := make([]rune, len(words)-len(word)-index)
-	skip := 0
-	stringIndex += len(word) + 1
+func GetWords(input string) []string {
+	split := make([]string, 0, strings.Count(input, " "))
+	word := make([]rune, 0, 256)
 
-	if index < 0 {
-		fmt.Printf("string not found: \"%v\" in \"%v\"", word, words)
-		return "!INVALID", stringIndex, skip
-	}
+	l := len(input)
 
-	for i, c := range words[index:] {
-		if string(c) != "\"" {
-			str = append(str, c)
-		} else {
-			stringIndex += i
-			break
+	next := func(i int) (rune, bool) {
+		if i+1 < l {
+			return rune(input[i+1]), true
 		}
+		return 0, false
 	}
-	sw := strings.Fields(string(str))
-	skip += len(sw)
-	nw, _ := getNext(splitWords, wordIndex+(skipBy+skip)+1, "")
-	if nw == "\"" {
-		skip++
+
+	isString := false
+
+	for i := 0; i < len(input); i++ {
+		c := rune(input[i])
+
+		switch c {
+		case '.':
+			if n, ok := next(i); ok {
+				if n == '"' {
+					// fmt.Printf("found string\n")
+					isString = true
+					i += 2
+					split = append(split, ".\"")
+					word = make([]rune, 0, 256)
+					continue
+				}
+			}
+		case '\\':
+			if isString {
+				if n, ok := next(i); ok {
+					if n == '"' {
+						word = append(word, '\\')
+						word = append(word, '"')
+						i++
+						continue
+					}
+				}
+			}
+		case '"':
+			// fmt.Printf("string complete\n")
+			isString = false
+			word = append(word, '"')
+			str := string(word)
+			split = append(split, str)
+			word = make([]rune, 0, 256)
+			continue
+		}
+
+		if unicode.IsSpace(c) {
+			if !isString {
+				if len(word) > 0 {
+					str := string(word)
+					split = append(split, str)
+					word = make([]rune, 0, 256)
+				}
+				continue
+			}
+		}
+		word = append(word, c)
 	}
-	// fmt.Printf("\nstring: '%s'\n", string(str))
-	return string(str), stringIndex, skip
-	// fmt.Printf(" (next: %v, %d)", nw, skipBy)
+
+	if len(word) > 0 {
+		split = append(split, string(word))
+	}
+	return split
 }
 
-func (vm *VM) Process(words string, next string, skipBy int) (int, error) {
-	splitWords := strings.Fields(words)
+func (vm *VM) Process(words []string, next string, skipBy int) (int, error) {
+	// fmt.Printf("split: %v\n", strings.Join(words, " | "))
 	comment := false
-	stringIndex := 0
+	// stringIndex := 0
 
 	// fmt.Printf("Stack: t %T, & %p, i %d, %v\n", vm.Memory.Stack(), vm.Memory.Stack(), vm.Memory.Stack().Index, vm.Memory.Stack().Values[:vm.Memory.Stack().Index])
 
-	for wordIndex := skipBy; wordIndex < len(splitWords); wordIndex++ {
-		word := splitWords[wordIndex]
+	for index := skipBy; index < len(words); index++ {
+		word := words[index]
 		// fmt.Printf(
 		// 	"word: '%v', index: %v  <%v> %v, <%v> %v\n",
 		// 	word,
@@ -148,7 +177,7 @@ func (vm *VM) Process(words string, next string, skipBy int) (int, error) {
 		// 	vm.Memory.ReturnStack().Index,
 		// 	vm.Memory.ReturnStack().Values[:vm.Memory.ReturnStack().Index],
 		// )
-		// fmt.Printf("word: '%v', index: %v, words: \"%v\"\n", word, wordIndex, words)
+		// fmt.Printf("word: '%v', index: %v, input: \"%v\"\n", word, wordIndex, input)
 		if comment {
 			// fmt.Printf("skipping: %v (%v, %v)\n", word, skipNext, comment)
 			if word == ")" {
@@ -175,17 +204,7 @@ func (vm *VM) Process(words string, next string, skipBy int) (int, error) {
 					vm.defining = word
 				} else {
 					// fmt.Printf("Compiling... %v\n", word)
-					switch word {
-					case ".\"":
-						str, index, skip := getString(word, words, stringIndex, wordIndex, skipBy)
-						stringIndex = index
-						// fmt.Printf("%s", str)
-						vm.definition += " " + word + " " + str + "\""
-						// fmt.Printf("defining: str, %v, %v\n", word, str)
-						skipBy += skip
-					default:
-						vm.definition += " " + word
-					}
+					vm.definition = append(vm.definition, word)
 				}
 			}
 		} else {
@@ -205,33 +224,42 @@ func (vm *VM) Process(words string, next string, skipBy int) (int, error) {
 					fmt.Printf("\n")
 				}
 			case "constant":
-				name, ok := getNext(splitWords, wordIndex+1, next)
+				name, ok := getWord(words, index+1, next)
 				skipBy += 1
-				// vm.Memory.Stack().Print("C", vm.Memory.NumberBase())
 				value := vm.Memory.Stack().Pop()
+				// fmt.Printf("\n")
 				// vm.Memory.Stack().Print("C", vm.Memory.NumberBase())
-				// fmt.Printf("constant: \"%v\" (%v) %d %d, \"%v\", %v !\n", name, strings.Join(splitWords, " "), skipBy, wordIndex+1, next, value)
+				// fmt.Printf("\n")
+				// fmt.Printf("constant: \"%v\" (%v) sk: %d, idx: %d, val: \"%v\", %v !\n", name, strings.Join(words, " "), skipBy, index, next, value)
 				if !ok {
 					fmt.Printf("attempt to use zero-length string as a name")
 					continue
 				}
 				vword := fmt.Sprintf("%d", value)
-				vm.Memory.Dict().Define(name, vword, vword)
+				vm.Memory.Dict().Define(name, vword, []string{vword})
 				// vm.Memory.Stack().Print("C", vm.Memory.NumberBase())
 			case ".\"":
-				// fmt.Printf("\nwor: '%v'\nsid: %v\nwid: %v\n", word, stringIndex, wordIndex)
-				str, index, skip := getString(word, words, stringIndex, wordIndex, skipBy)
-				stringIndex = index
-				fmt.Printf("%s ", string(str))
-				skipBy += skip
-
-				// fmt.Printf("\nstr: '%v'\nidx: %v\nski: %v\n", str, index, skip)
+				w, ok := getWord(words, index+1, next)
+				if !ok {
+					fmt.Printf("no string found")
+					continue
+				}
+				skipBy += 1
+				if len(w) > 0 {
+					w = string(w[:len(w)-1])
+					str, err := strconv.Unquote("\"" + w + "\"")
+					if err != nil {
+						fmt.Printf("failed to unquote '%v' -> %v", w, err)
+						continue
+					}
+					fmt.Printf("%s", str)
+				}
 
 			// branching
 			case "branch":
 				// unconditional branch
-				offset, ok := getNext(splitWords, wordIndex+1, next)
-				skipBy = 1
+				offset, ok := getWord(words, index+1, next)
+				skipBy += 1
 				// if !vm.compiling {
 				// 	fmt.Printf("compile-only word")
 				// }
@@ -245,16 +273,16 @@ func (vm *VM) Process(words string, next string, skipBy int) (int, error) {
 					continue
 				}
 				// TODO: implement "debug" flag for outputting these branch locations?
-				// nw, _ := getNext(splitWords, wordIndex+2, next)
+				// nw, _ := getWord(words, wordIndex+2, next)
 				// fmt.Printf("branch: %v:%v, %v\n", offset, skip, nw)
 				skipBy += skip
-				// dst, _ := getNext(splitWords, wordIndex+skipBy, next)
+				// dst, _ := getWord(words, wordIndex+skipBy, next)
 				// fmt.Printf("  next: %v\n", dst)
 			case "?branch":
 				// condition branch
 				condition := vm.Memory.Stack().Pop()
-				offset, ok := getNext(splitWords, wordIndex+1, next)
-				skipBy = 1
+				offset, ok := getWord(words, index+1, next)
+				skipBy += 1
 				// if !vm.compiling {
 				// 	fmt.Printf("compile-only word")
 				// }
@@ -269,10 +297,10 @@ func (vm *VM) Process(words string, next string, skipBy int) (int, error) {
 						continue
 					}
 					// TODO: implement "debug" flag for outputting these branch locations?
-					// nw, _ := getNext(splitWords, wordIndex+2, next)
+					// nw, _ := getWord(words, wordIndex+2, next)
 					// fmt.Printf("?branch: %v:%v, %v\n", offset, skip, nw)
 					skipBy += skip
-					// dst, _ := getNext(splitWords, wordIndex+skipBy, next)
+					// dst, _ := getWord(words, wordIndex+skipBy, next)
 					// fmt.Printf("  next: %v\n", dst)
 				}
 			// compiler
@@ -284,8 +312,8 @@ func (vm *VM) Process(words string, next string, skipBy int) (int, error) {
 			case "(":
 				comment = true
 			case "see":
-				lookup, ok := getNext(splitWords, wordIndex+1, next)
-				skipBy = 1
+				lookup, ok := getWord(words, index+1, next)
+				skipBy += 1
 				// fmt.Printf("see: \"%v\" %v\n", lookup, ok)
 				if !ok {
 					fmt.Printf("undefined word, missing")
@@ -296,7 +324,7 @@ func (vm *VM) Process(words string, next string, skipBy int) (int, error) {
 					fmt.Printf("undefined word: \"%v\" %v", lookup, def)
 					continue
 				}
-				fmt.Printf("%v", def)
+				fmt.Printf("\n%v\n\n ", def)
 			case "words":
 				for word, _ := range vm.Memory.Dict().Words {
 					fmt.Printf("%v ", word)
@@ -320,8 +348,16 @@ func (vm *VM) Process(words string, next string, skipBy int) (int, error) {
 							return skip, err
 						}
 					} else {
-						nextWord, _ := getNext(splitWords, wordIndex+1, next)
+						nextWord, _ := getWord(words, index+1, next)
+						// fmt.Printf("\n")
+						// vm.Memory.Stack().Print("PB", vm.Memory.NumberBase())
+						// fmt.Printf("\nPw: %v", def.Compiled)
+						// fmt.Printf("\n")
 						skip, err := vm.Process(def.Compiled, nextWord, 0) // we just assume we aren't skipping here ... yes?
+						// fmt.Printf("\n")
+						// vm.Memory.Stack().Print("PA", vm.Memory.NumberBase())
+						// fmt.Printf("\nPW: %v", def.Compiled)
+						// fmt.Printf("\n")
 						if err != nil {
 							return 1, err
 						}
@@ -339,9 +375,10 @@ func (vm *VM) Process(words string, next string, skipBy int) (int, error) {
 				}
 			}
 		}
-		wordIndex += skipBy
-		if wordIndex >= len(splitWords) {
-			return skipBy, nil
+		index += skipBy
+		if index >= len(words) {
+			// fmt.Printf("\nSkipping: sk: %v, idx: %v, len: %v %v\n", skipBy, index, index-(len(words)-1), words)
+			return index - (len(words) - 1), nil
 		}
 		skipBy = 0
 	}
@@ -351,15 +388,14 @@ func (vm *VM) Process(words string, next string, skipBy int) (int, error) {
 func (vm *VM) Compile() {
 	vm.compiling = true
 	vm.defining = ""
-	vm.definition = ""
+	vm.definition = make([]string, 0, STACK_SIZE)
 }
 
 func (vm *VM) EndCompile() error {
-	definition := strings.TrimSpace(vm.definition)
-	compiled, err := vm.parse(definition)
+	compiled, err := vm.parse(vm.definition)
 
 	if err == nil {
-		err = vm.Memory.Dict().Define(strings.TrimSpace(vm.defining), definition, compiled)
+		err = vm.Memory.Dict().Define(strings.TrimSpace(vm.defining), strings.Join(vm.definition, " "), compiled)
 	}
 
 	vm.compiling = false
@@ -367,15 +403,18 @@ func (vm *VM) EndCompile() error {
 	return err
 }
 
-func (vm *VM) parse(d string) (string, error) {
-	words := strings.Fields(d)
+func (vm *VM) parse(words []string) ([]string, error) {
+	// fmt.Printf("Parsing...\n")
+	// words := strings.Fields(d)
+	// words := getWords(input)
 
-	compiled := make([]string, 0, 1024)
-	control := stack.NewStack(1024)
+	compiled := make([]string, 0, STACK_SIZE)
+	control := stack.NewStack(STACK_SIZE)
+	// stringIndex := 0
 	// for _, word := range words {
 	skipNext := false
-	for wordIndex := 0; wordIndex < len(words); wordIndex++ {
-		word := words[wordIndex]
+	for index := 0; index < len(words); index++ {
+		word := words[index]
 		if skipNext {
 			if word == ")" {
 				skipNext = false
@@ -387,39 +426,44 @@ func (vm *VM) parse(d string) (string, error) {
 			skipNext = true
 
 		case "[char]":
-			if len(words) >= wordIndex+1 {
-				char := words[wordIndex+1]
+			if len(words) >= index+1 {
+				char, ok := getWord(words, index+1, "")
+				if !ok {
+					return []string{}, fmt.Errorf("[char] without character")
+				}
 				n := int(char[0])
-				wordIndex++
+				index++
 				compiled = append(compiled, strconv.Itoa(n))
 			} else {
-				return "", fmt.Errorf("[char] ")
+				return []string{}, fmt.Errorf("[char] ")
 			}
 
 		case "if":
 			compiled = append(compiled, "?branch")
 			compiled = append(compiled, "?") // location of 'else'
-			control.Push(len(compiled))
+			control.Push(len(compiled) - 1)
 
 		case "else":
 			compiled = append(compiled, "branch")
 			compiled = append(compiled, "?") // location of 'then'
 			jump := control.Pop()            // location of if ?branch index
-			to := len(compiled)
-			compiled[jump-1] = fmt.Sprintf("%d", to-2)
-			control.Push(len(compiled))
+			to := len(compiled) - jump - 1
+			// fmt.Printf("\nelse: %v, %v\n", jump, to)
+			compiled[jump] = fmt.Sprintf("%d", to)
+			control.Push(len(compiled) - 1)
 
 		case "then":
 			jump := control.Pop() // location of else ?branch index
-			to := len(compiled) - jump
-			compiled[jump-1] = fmt.Sprintf("%d", to)
+			to := len(compiled) - jump - 1
+			// fmt.Printf("\nthen: %v, %v\n", jump, to)
+			compiled[jump] = fmt.Sprintf("%d", to)
 
 		case "do":
 			compiled = append(compiled, "2>R")
-			control.Push(len(compiled))
+			control.Push(len(compiled) - 1)
 
 		case "begin":
-			control.Push(len(compiled))
+			control.Push(len(compiled) - 1)
 
 		case "until":
 			// jump out of loop if 0
@@ -427,7 +471,7 @@ func (vm *VM) parse(d string) (string, error) {
 			compiled = append(compiled, "2")
 
 			offset := control.Pop()
-			jump := (offset - (len(compiled) + 2))
+			jump := (offset - (len(compiled) - 1 + 2))
 			// fmt.Printf("UNTIL : %v, %v, %v\n", offset, jump, len(compiled))
 			compiled = append(compiled, "branch")
 			compiled = append(compiled, fmt.Sprintf("%d", jump))
@@ -443,7 +487,7 @@ func (vm *VM) parse(d string) (string, error) {
 			compiled = append(compiled, "2>R")
 
 			offset := control.Pop()
-			jump := (offset - (len(compiled) + 2))
+			jump := (offset - (len(compiled) - 1 + 2))
 			// fmt.Printf("LOOP : %v, %v, %v\n", offset, jump, len(compiled))
 			compiled = append(compiled, "?branch")
 			compiled = append(compiled, fmt.Sprintf("%d", jump))
@@ -469,10 +513,10 @@ func (vm *VM) parse(d string) (string, error) {
 		}
 	}
 
-	c := strings.Join(compiled, " ")
+	// c := strings.Join(compiled, " ")
 
 	// fmt.Printf(" PARSED: %v\n COMPILE: %v\n", d, c)
-	return c, nil
+	return compiled, nil
 }
 
 func (vm *VM) Mode() Mode {
@@ -483,3 +527,39 @@ func (vm *VM) SetMode(mode Mode) Mode {
 	vm.mode = mode
 	return vm.mode
 }
+
+//// DEPRECATED
+
+// func getString(word, input string, stringIndex, wordIndex, skipBy int) (string, int, int) {
+// 	// fmt.Printf("get: '%v', '%v', sid: %v, wid: %v, sk: %v", word, words, stringIndex, wordIndex, skipBy)
+// 	// words := strings.Fields(words)
+// 	words := getWords(input)
+// 	index := len(word) + 1 + stringIndex + strings.Index(words[stringIndex:], word)
+// 	str := make([]rune, len(words)-len(word)-index)
+// 	skip := 0
+// 	stringIndex += len(word) + 1
+
+// 	if index < 0 {
+// 		fmt.Printf("string not found: \"%v\" in \"%v\"\n", word, words)
+// 		return "!INVALID", stringIndex, skip
+// 	}
+
+// 	for i, c := range words[index:] {
+// 		if string(c) != "\"" {
+// 			str = append(str, c)
+// 		} else {
+// 			stringIndex += i
+// 			break
+// 		}
+// 	}
+// 	// sw := strings.Fields(string(str))
+// 	sw := getWords(string(str))
+// 	skip += len(sw)
+// 	nw, _ := getWord(words, wordIndex+(skipBy+skip)+1, "")
+// 	if nw == "\"" {
+// 		skip++
+// 	}
+// 	// fmt.Printf("get: '%s'\n", string(str))
+// 	return string(str), stringIndex, skip
+// 	// fmt.Printf(" (next: %v, %d)", nw, skipBy)
+// }

@@ -236,7 +236,9 @@ var Core = map[string]DefinitionFn{
 		index := m.DataSpace().Index
 		m.DataSpace().Allot(1)
 		m.DataSpace().Put(index, value)
-		// showStack(m)
+		// fmt.Printf("\n")
+		// m.Stack().Print(",", m.NumberBase())
+		// fmt.Printf("\n")
 
 		// fmt.Printf("  ds,: t %T, & %p, i %d, %v\n", m.DataSpace(), m.DataSpace(), m.DataSpace().Index, m.DataSpace().Values[:m.DataSpace().Index])
 		// fmt.Printf("    ,: t %T, & %p, i %d, %v\n", m.Stack(), m.Stack(), m.Stack().Index, m.Stack().Values[:m.Stack().Index])
@@ -286,6 +288,18 @@ var Core = map[string]DefinitionFn{
 	},
 
 	// output
+	"(clearscreen)": func(m memory) (int, error) {
+		fmt.Print("\033[2J")
+		return 0, nil
+	},
+	"(at-xy)": func(m memory) (int, error) {
+		y := m.Stack().Pop()
+		x := m.Stack().Pop()
+
+		// ESC[{line};{column}H
+		fmt.Printf("\033[%d;%dH", y, x)
+		return 0, nil
+	},
 	"(emit)": func(m memory) (int, error) {
 		i := m.Stack().Pop()
 		n := strconv.FormatInt(int64(i), m.NumberBase())
@@ -303,7 +317,11 @@ var Core = map[string]DefinitionFn{
 		pad := m.Stack().Pop()
 		n := m.Stack().Pop()
 		// '     0'
-		fmt.Printf(fmt.Sprintf("%%%dd", pad), n)
+		s := fmt.Sprintf("%d", n)
+		for i := len(s); i < pad; i++ {
+			s = " " + s
+		}
+		fmt.Printf("%s", s)
 		return 0, nil
 	},
 }

@@ -42,7 +42,8 @@ func main() {
 
 	for _, line := range strings.Split(string(core), "\n") {
 		if !strings.HasPrefix(line, "\\") {
-			machine.Process(line, "", 0)
+			words := vm.GetWords(line)
+			machine.Process(words, "", 0)
 		}
 		// fmt.Printf("DEFINE: %v\n", line)
 	}
@@ -127,7 +128,7 @@ func gotoHistory(line string, i int) string {
 		historyIndex = len(history) - 1
 	}
 
-	if historyIndex >= len(history) {
+	if historyIndex > len(history) {
 		historyIndex = 0
 	}
 
@@ -135,21 +136,41 @@ func gotoHistory(line string, i int) string {
 		line = backspace(line)
 	}
 
-	line = history[historyIndex]
+	if historyIndex == len(history) {
+		line = ""
+	} else {
+		line = history[historyIndex]
+	}
+
 	fmt.Printf("%v", line)
 	return line
 }
 
 func addToHistory(line string) {
+	if len(line) < 1 {
+		historyIndex++
+		return
+	}
+
+	if len(history) > 0 {
+		last := history[len(history)-1]
+
+		if last == line {
+			// don't duplicate the last used word
+			historyIndex++
+			return
+		}
+	}
+
 	if len(history) >= HISTORY_SIZE {
 		history = history[:HISTORY_SIZE-1]
 	}
 	history = append(history, line)
-	historyIndex++
+	historyIndex = len(history)
 	// fmt.Printf("history: [%v]", strings.Join(history, ", "))
 }
 
-func process(words string) bool {
+func process(input string) bool {
 	defer func() {
 		if err := recover(); err != nil {
 			fmt.Printf("\n\nERROR\n")
@@ -166,6 +187,7 @@ func process(words string) bool {
 	// words := input
 	// fmt.Printf("words: %v\n", words)
 	fmt.Printf(" ")
+	words := vm.GetWords(input)
 	_, err := machine.Process(words, "", 0)
 	if err != nil {
 		if err.Error() == "bye" {

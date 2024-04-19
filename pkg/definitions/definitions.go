@@ -2,6 +2,7 @@ package definitions
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/zoul0813/go-forth/pkg/stack"
 )
@@ -21,13 +22,13 @@ type DefinitionFn func(m memory) (int, error)
 type Definition struct {
 	Name      string
 	Definiton string
-	Compiled  string
+	Compiled  []string
 	Fn        DefinitionFn
 	Internal  bool
 }
 
 func (d *Definition) String() string {
-	s := fmt.Sprintf(": %v\n  %v ;\n\ncompiled:\n%v\n", d.Name, d.Definiton, d.Compiled)
+	s := fmt.Sprintf(": %v\n  %v ;\n\ncompiled:\n  %v", d.Name, d.Definiton, strings.Join(d.Compiled, " "))
 	if d.Internal {
 		s += " (internal)"
 	}
