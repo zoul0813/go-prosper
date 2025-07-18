@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"path/filepath"
 	"runtime"
 	"strings"
 
@@ -27,7 +28,8 @@ func main() {
 
 	cwd, _ := os.Getwd()
 	corePath := path.Join(cwd, "cmd/prosper/core.f")
-	fmt.Printf("Core: %v\n", corePath)
+	corePathRel, _ := filepath.Rel(cwd, corePath)
+	fmt.Printf("Core: %v\n", corePathRel)
 	core, err := os.ReadFile(corePath)
 	if err != nil {
 		fmt.Println("Failed to load core.f: ", err)
