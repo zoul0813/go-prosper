@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/zoul0813/go-forth/pkg/definitions"
+	"github.com/zoul0813/go-prosper/pkg/definitions"
 )
 
 type Dict struct {

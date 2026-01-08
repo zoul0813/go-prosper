@@ -3,13 +3,12 @@ package main
 import (
 	"fmt"
 	"os"
-	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
 
 	"github.com/eiannone/keyboard"
-	"github.com/zoul0813/go-forth/pkg/vm"
+	"github.com/zoul0813/go-prosper/pkg/vm"
 )
 
 const (
@@ -27,7 +26,31 @@ func main() {
 	fmt.Printf("Go Forth %v, Copyright (C) 2024 David Higgins <zoul0813@me.com>\nCompiled with %v\n", VERSION, runtime.Version())
 
 	cwd, _ := os.Getwd()
-	corePath := path.Join(cwd, "cmd/prosper/core.f")
+	exePath, _ := os.Executable()
+	exeDir := filepath.Dir(exePath)
+
+	var corePath string
+	corePaths := []string{
+		filepath.Join(exeDir, "runtime", "core.f"),
+		filepath.Join(exeDir, "..", "share", "prosper", "runtime", "core.f"),
+		filepath.Join(cwd, "runtime", "core.f"),
+	}
+
+	for _, p := range corePaths {
+		if _, err := os.Stat(p); err == nil {
+			corePath = p
+			break
+		}
+	}
+
+	if corePath == "" {
+		fmt.Printf("Failed to find core.f, Tried:\n")
+		for _, p := range corePaths {
+			fmt.Printf(". - %s\n", p)
+		}
+		return
+	}
+
 	corePathRel, _ := filepath.Rel(cwd, corePath)
 	fmt.Printf("Core: %v\n", corePathRel)
 	core, err := os.ReadFile(corePath)

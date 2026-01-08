@@ -1,4 +1,4 @@
-module github.com/zoul0813/go-forth
+module github.com/zoul0813/go-prosper
 
 go 1.22.1
 

@@ -1,8 +1,8 @@
 package memory
 
 import (
-	"github.com/zoul0813/go-forth/pkg/dict"
-	"github.com/zoul0813/go-forth/pkg/stack"
+	"github.com/zoul0813/go-prosper/pkg/dict"
+	"github.com/zoul0813/go-prosper/pkg/stack"
 )
 
 type Memory struct {

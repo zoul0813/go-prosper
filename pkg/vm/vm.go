@@ -6,9 +6,9 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/zoul0813/go-forth/pkg/memory"
-	"github.com/zoul0813/go-forth/pkg/numbers"
-	"github.com/zoul0813/go-forth/pkg/stack"
+	"github.com/zoul0813/go-prosper/pkg/memory"
+	"github.com/zoul0813/go-prosper/pkg/numbers"
+	"github.com/zoul0813/go-prosper/pkg/stack"
 )
 
 const (

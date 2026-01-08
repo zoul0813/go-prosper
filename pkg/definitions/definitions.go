@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/zoul0813/go-forth/pkg/stack"
+	"github.com/zoul0813/go-prosper/pkg/stack"
 )
 
 type memory interface {
