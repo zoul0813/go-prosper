@@ -9,7 +9,7 @@ import (
 
 func processTest(t *testing.T, m *VM, input string) {
 	t.Helper()
-	if _, err := m.Process(GetWords(input), "", 0); err != nil {
+	if err := m.Execute(input); err != nil {
 		t.Fatalf("process %q: %v", input, err)
 	}
 }
@@ -109,7 +109,7 @@ func TestInvalidDefinitionsRecover(t *testing.T) {
 		t.Run(body, func(t *testing.T) {
 			m := NewVM()
 			processTest(t, m, ": saved 7 ;")
-			if _, err := m.Process(GetWords(": saved "+body+" ;"), "", 0); err == nil {
+			if err := m.Execute(": saved " + body + " ;"); err == nil {
 				t.Fatal("invalid definition accepted")
 			}
 			if m.compiling {
@@ -120,7 +120,7 @@ func TestInvalidDefinitionsRecover(t *testing.T) {
 		})
 	}
 	m := NewVM()
-	if _, err := m.Process(GetWords(": ;"), "", 0); err == nil {
+	if err := m.Execute(": ;"); err == nil {
 		t.Fatal("empty name accepted")
 	}
 }

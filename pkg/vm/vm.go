@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"unicode"
 
 	"github.com/zoul0813/go-prosper/pkg/memory"
 	"github.com/zoul0813/go-prosper/pkg/numbers"
@@ -29,6 +28,9 @@ type VM struct {
 	// ReturnStack *stack.Stack
 	// Dict        *dict.Dict
 	Memory *memory.Memory
+
+	// ReadKey supplies a character from the host terminal or an embedded caller.
+	ReadKey func() (rune, error)
 
 	compiling  bool
 	defining   string
@@ -60,6 +62,10 @@ func NewVM() *VM {
 		"begin",
 		"until",
 		"loop",
+		"+loop",
+		"j",
+		"key",
+		"abort\"",
 		"i",
 		// variables
 		"constant",
@@ -86,76 +92,6 @@ func getWord(words []string, index int, next string) (string, bool) {
 		word = next
 	}
 	return word, word != ""
-}
-
-func GetWords(input string) []string {
-	split := make([]string, 0, strings.Count(input, " "))
-	word := make([]rune, 0, 256)
-
-	l := len(input)
-
-	next := func(i int) (rune, bool) {
-		if i+1 < l {
-			return rune(input[i+1]), true
-		}
-		return 0, false
-	}
-
-	isString := false
-
-	for i := 0; i < len(input); i++ {
-		c := rune(input[i])
-
-		switch c {
-		case '.':
-			if n, ok := next(i); ok {
-				if n == '"' {
-					// fmt.Printf("found string\n")
-					isString = true
-					i += 2
-					split = append(split, ".\"")
-					word = make([]rune, 0, 256)
-					continue
-				}
-			}
-		case '\\':
-			if isString {
-				if n, ok := next(i); ok {
-					if n == '"' {
-						word = append(word, '\\')
-						word = append(word, '"')
-						i++
-						continue
-					}
-				}
-			}
-		case '"':
-			// fmt.Printf("string complete\n")
-			isString = false
-			word = append(word, '"')
-			str := string(word)
-			split = append(split, str)
-			word = make([]rune, 0, 256)
-			continue
-		}
-
-		if unicode.IsSpace(c) {
-			if !isString {
-				if len(word) > 0 {
-					str := string(word)
-					split = append(split, str)
-					word = make([]rune, 0, 256)
-				}
-				continue
-			}
-		}
-		word = append(word, c)
-	}
-
-	if len(word) > 0 {
-		split = append(split, string(word))
-	}
-	return split
 }
 
 func (vm *VM) Process(words []string, next string, skipBy int) (int, error) {
@@ -237,21 +173,32 @@ func (vm *VM) Process(words []string, next string, skipBy int) (int, error) {
 				vword := fmt.Sprintf("#%d", value)
 				vm.Memory.Dict().Define(name, vword, []string{vword})
 				// vm.Memory.Stack().Print("C", vm.Memory.NumberBase())
-			case ".\"":
+			case "key":
+				if vm.ReadKey == nil {
+					return 0, fmt.Errorf("key: no input available")
+				}
+				key, err := vm.ReadKey()
+				if err != nil {
+					return 0, err
+				}
+				vm.Memory.Stack().Push(int(key))
+			case ".\"", "abort\"":
 				w, ok := getWord(words, index+1, next)
 				if !ok {
-					fmt.Printf("no string found")
-					continue
+					return 0, fmt.Errorf("%s: missing string", word)
 				}
-				skipBy += 1
-				if len(w) > 0 {
-					w = string(w[:len(w)-1])
-					str, err := strconv.Unquote("\"" + w + "\"")
-					if err != nil {
-						fmt.Printf("failed to unquote '%v' -> %v", w, err)
-						continue
+				str, err := strconv.Unquote("\"" + w)
+				if err != nil {
+					return 0, err
+				}
+				skipBy++
+				if strings.EqualFold(word, "abort\"") {
+					if vm.Memory.Stack().Pop() != 0 {
+						vm.Memory.Recover()
+						return 0, fmt.Errorf("abort: %s", str)
 					}
-					fmt.Printf("%s", str)
+				} else {
+					fmt.Print(str)
 				}
 
 			// branching
@@ -335,7 +282,7 @@ func (vm *VM) Process(words []string, next string, skipBy int) (int, error) {
 				fmt.Printf("    Data: <%d> %v\n", vm.Memory.DataSpace().Index, vm.Memory.DataSpace().Values[:vm.Memory.DataSpace().Index])
 				fmt.Printf("    Mode: %v\n", vm.compiling)
 			case "bye":
-				return 0, fmt.Errorf("bye")
+				return 0, ErrBye
 			default:
 				def, ok := vm.Memory.Dict().Lookup(word)
 				// fmt.Printf(" > \"%v\" (%v, %v, %v) => \"%v\"\n", word, ok, skipBy, comment, def)
@@ -442,7 +389,7 @@ func (vm *VM) parse(words []string) ([]string, error) {
 		case "(":
 			skipNext = true
 
-		case ".\"", "constant", "see", "branch", "?branch":
+		case ".\"", "abort\"", "constant", "see", "branch", "?branch":
 			// These operands are strings, names, or decimal branch offsets.
 			compiled = append(compiled, word)
 			if index+1 < len(words) {
@@ -505,39 +452,21 @@ func (vm *VM) parse(words []string) ([]string, error) {
 			jump := offset - len(compiled)
 			compiled = append(compiled, strconv.Itoa(jump))
 
-		case "loop":
-			compiled = append(compiled, "2R>")
-			compiled = append(compiled, "#1")
-			compiled = append(compiled, "+")
-			compiled = append(compiled, "2DUP")
-			compiled = append(compiled, "=")
-			compiled = append(compiled, "ROT")
-			compiled = append(compiled, "ROT")
-			compiled = append(compiled, "2>R")
-
-			offset, err := pop("loop", "do")
+		case "loop", "+loop":
+			offset, err := pop(word, "do")
 			if err != nil {
 				return nil, err
 			}
-			jump := (offset - (len(compiled) - 1 + 2))
-			// fmt.Printf("LOOP : %v, %v, %v\n", offset, jump, len(compiled))
-			compiled = append(compiled, "?branch")
-			compiled = append(compiled, fmt.Sprintf("%d", jump))
+			if strings.EqualFold(word, "loop") {
+				compiled = append(compiled, "#1")
+			}
+			compiled = append(compiled, "(+loop)", "?branch")
+			compiled = append(compiled, strconv.Itoa(offset-len(compiled)))
 
-			compiled = append(compiled, "2R>")
-			compiled = append(compiled, "2DROP")
-
-		// inner loop index
 		case "i":
-			compiled = append(compiled, "2R@")
-			compiled = append(compiled, "SWAP")
-			compiled = append(compiled, "DROP")
-		// outer loop index
-		// case "j":
-		// 	compiled = append(compiled, "2R>")
-		// 	compiled = append(compiled, "2R>")
-		// 	compiled = append(compiled, "2SWAP")
-		// 	compiled = append(compiled, "2DROP")
+			compiled = append(compiled, "(i)")
+		case "j":
+			compiled = append(compiled, "(j)")
 
 		default:
 			if _, defined := vm.Memory.Dict().Lookup(word); !defined {

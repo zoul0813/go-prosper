@@ -57,3 +57,23 @@ func TestIntegerPrecision(t *testing.T) {
 		})
 	}
 }
+
+func TestUnsignedDoubleMultiply(t *testing.T) {
+	max := ^uint(0)
+	half := uint(1) << (strconv.IntSize / 2)
+	for _, tt := range []struct{ left, right, low, high uint }{
+		{0, max, 0, 0}, {max, 1, max, 0}, {max, max, 1, max - 1},
+		{half, half, 0, 1}, {7, 9, 63, 0},
+	} {
+		m := memory.NewMemory(16, 16)
+		m.Stack().Push(int(tt.left))
+		m.Stack().Push(int(tt.right))
+		if _, err := definitions.Core["um*"](m); err != nil {
+			t.Fatal(err)
+		}
+		want := []int{int(tt.low), int(tt.high)}
+		if got := m.Stack().Values[:m.Stack().Index]; !reflect.DeepEqual(got, want) {
+			t.Fatalf("%d * %d = %v, want %v", tt.left, tt.right, got, want)
+		}
+	}
+}

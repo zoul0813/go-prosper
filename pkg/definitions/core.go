@@ -2,6 +2,7 @@ package definitions
 
 import (
 	"fmt"
+	"math/bits"
 	"strconv"
 	"time"
 )
@@ -94,16 +95,48 @@ var Core = map[string]DefinitionFn{
 		return 0, nil
 	},
 	"um*": func(m memory) (int, error) {
-		right := int64(m.Stack().Pop())
-		left := int64(m.Stack().Pop())
-		product := left * right
+		right := uint(m.Stack().Pop())
+		left := uint(m.Stack().Pop())
+		hi, lo := bits.Mul(left, right)
+		m.Stack().Push(int(lo))
+		m.Stack().Push(int(hi))
+		return 0, nil
+	},
 
-		var x, y int
-		x = int(product >> 32)
-		y = int(product & 0xFFFFFFFF)
-
-		m.Stack().Push(y)
-		m.Stack().Push(x)
+	// Loop parameters share the return stack: limit, then current index.
+	"(+loop)": func(m memory) (int, error) {
+		if m.ReturnStack().Index < 2 {
+			return 0, fmt.Errorf("+loop outside a loop")
+		}
+		step := m.Stack().Pop()
+		index := m.ReturnStack().Pop()
+		limit := m.ReturnStack().Pop()
+		distance := uint(limit) - uint(index)
+		done := step > 0 && distance != 0 && uint(step) >= distance
+		if step < 0 {
+			done = (0 - uint(step)) > uint(index)-uint(limit)
+		}
+		if done {
+			m.Stack().Push(-1)
+		} else {
+			m.ReturnStack().Push(limit)
+			m.ReturnStack().Push(index + step)
+			m.Stack().Push(0)
+		}
+		return 0, nil
+	},
+	"(i)": func(m memory) (int, error) {
+		if m.ReturnStack().Index < 2 {
+			return 0, fmt.Errorf("i outside a loop")
+		}
+		m.Stack().Push(m.ReturnStack().Peek())
+		return 0, nil
+	},
+	"(j)": func(m memory) (int, error) {
+		if m.ReturnStack().Index < 4 {
+			return 0, fmt.Errorf("j outside nested loops")
+		}
+		m.Stack().Push(m.ReturnStack().PeekN(3))
 		return 0, nil
 	},
 
@@ -312,6 +345,12 @@ var Core = map[string]DefinitionFn{
 	},
 	"(showreturn)": func(m memory) (int, error) {
 		return showReturn(m)
+	},
+	"u.r": func(m memory) (int, error) {
+		width := m.Stack().Pop()
+		n := uint(m.Stack().Pop())
+		fmt.Printf("%*s", max(0, width), strconv.FormatUint(uint64(n), m.NumberBase()))
+		return 0, nil
 	},
 	"i.r": func(m memory) (int, error) {
 		pad := m.Stack().Pop()
