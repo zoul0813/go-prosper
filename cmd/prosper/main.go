@@ -136,9 +136,9 @@ func backspace(line string) string {
 	if len(line) < 1 {
 		return ""
 	}
-	fmt.Printf(string(keyboard.KeyBackspace))
+	fmt.Print("\b")
 	fmt.Printf(" ")
-	fmt.Printf(string(keyboard.KeyBackspace))
+	fmt.Print("\b")
 	line = line[:len(line)-1]
 	return line
 }
