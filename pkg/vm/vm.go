@@ -8,7 +8,6 @@ import (
 
 	"github.com/zoul0813/go-prosper/pkg/memory"
 	"github.com/zoul0813/go-prosper/pkg/numbers"
-	"github.com/zoul0813/go-prosper/pkg/stack"
 )
 
 const (
@@ -192,7 +191,7 @@ func (vm *VM) Process(words []string, next string, skipBy int) (int, error) {
 				err := vm.EndCompile()
 
 				if err != nil {
-					fmt.Printf("error: %v (%v)", err, vm.defining)
+					return 0, fmt.Errorf("compile %q: %w", vm.defining, err)
 				} else {
 					if vm.mode == Standard {
 						fmt.Printf("defined %v\n", vm.defining)
@@ -392,13 +391,15 @@ func (vm *VM) Compile() {
 }
 
 func (vm *VM) EndCompile() error {
+	defer func() { vm.compiling = false }()
+	if strings.TrimSpace(vm.defining) == "" {
+		return fmt.Errorf("missing definition name")
+	}
 	compiled, err := vm.parse(vm.definition)
 
 	if err == nil {
 		err = vm.Memory.Dict().Define(strings.TrimSpace(vm.defining), strings.Join(vm.definition, " "), compiled)
 	}
-
-	vm.compiling = false
 
 	return err
 }
@@ -409,7 +410,23 @@ func (vm *VM) parse(words []string) ([]string, error) {
 	// words := getWords(input)
 
 	compiled := make([]string, 0, STACK_SIZE)
-	control := stack.NewStack(STACK_SIZE)
+	type frame struct {
+		kind  string
+		index int
+	}
+	var control []frame
+	pop := func(word string, kinds ...string) (int, error) {
+		if len(control) > 0 {
+			top := control[len(control)-1]
+			for _, kind := range kinds {
+				if top.kind == kind {
+					control = control[:len(control)-1]
+					return top.index, nil
+				}
+			}
+		}
+		return 0, fmt.Errorf("unmatched %s", word)
+	}
 	// stringIndex := 0
 	// for _, word := range words {
 	skipNext := false
@@ -449,32 +466,41 @@ func (vm *VM) parse(words []string) ([]string, error) {
 		case "if":
 			compiled = append(compiled, "?branch")
 			compiled = append(compiled, "?") // location of 'else'
-			control.Push(len(compiled) - 1)
+			control = append(control, frame{strings.ToLower(word), len(compiled) - 1})
 
 		case "else":
 			compiled = append(compiled, "branch")
 			compiled = append(compiled, "?") // location of 'then'
-			jump := control.Pop()            // location of if ?branch index
+			jump, err := pop("else", "if")
+			if err != nil {
+				return nil, err
+			}
 			to := len(compiled) - jump - 1
 			// fmt.Printf("\nelse: %v, %v\n", jump, to)
 			compiled[jump] = fmt.Sprintf("%d", to)
-			control.Push(len(compiled) - 1)
+			control = append(control, frame{strings.ToLower(word), len(compiled) - 1})
 
 		case "then":
-			jump := control.Pop() // location of else ?branch index
+			jump, err := pop("then", "if", "else")
+			if err != nil {
+				return nil, err
+			}
 			to := len(compiled) - jump - 1
 			// fmt.Printf("\nthen: %v, %v\n", jump, to)
 			compiled[jump] = fmt.Sprintf("%d", to)
 
 		case "do":
 			compiled = append(compiled, "2>R")
-			control.Push(len(compiled) - 1)
+			control = append(control, frame{strings.ToLower(word), len(compiled) - 1})
 
 		case "begin":
-			control.Push(len(compiled) - 1)
+			control = append(control, frame{strings.ToLower(word), len(compiled) - 1})
 
 		case "until":
-			offset := control.Pop()
+			offset, err := pop("until", "begin")
+			if err != nil {
+				return nil, err
+			}
 			compiled = append(compiled, "?branch")
 			jump := offset - len(compiled)
 			compiled = append(compiled, strconv.Itoa(jump))
@@ -489,7 +515,10 @@ func (vm *VM) parse(words []string) ([]string, error) {
 			compiled = append(compiled, "ROT")
 			compiled = append(compiled, "2>R")
 
-			offset := control.Pop()
+			offset, err := pop("loop", "do")
+			if err != nil {
+				return nil, err
+			}
 			jump := (offset - (len(compiled) - 1 + 2))
 			// fmt.Printf("LOOP : %v, %v, %v\n", offset, jump, len(compiled))
 			compiled = append(compiled, "?branch")
@@ -518,6 +547,13 @@ func (vm *VM) parse(words []string) ([]string, error) {
 			}
 			compiled = append(compiled, word)
 		}
+	}
+
+	if skipNext {
+		return nil, fmt.Errorf("unclosed comment")
+	}
+	if len(control) > 0 {
+		return nil, fmt.Errorf("unclosed %s", control[len(control)-1].kind)
 	}
 
 	// c := strings.Join(compiled, " ")

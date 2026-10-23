@@ -100,3 +100,35 @@ func TestCompiledValuesIgnoreExecutionBase(t *testing.T) {
 		})
 	}
 }
+
+func TestInvalidDefinitionsRecover(t *testing.T) {
+	for _, body := range []string{
+		"then", "else", "loop", "until", "if 42", "begin 42", "do 42",
+		"begin then", "if loop", "do until", "if else else then", "( unclosed", "[char]",
+	} {
+		t.Run(body, func(t *testing.T) {
+			m := NewVM()
+			processTest(t, m, ": saved 7 ;")
+			if _, err := m.Process(GetWords(": saved "+body+" ;"), "", 0); err == nil {
+				t.Fatal("invalid definition accepted")
+			}
+			if m.compiling {
+				t.Fatal("compilation mode not reset")
+			}
+			processTest(t, m, ": good 1 2 + ; saved good")
+			assertStack(t, m, 7, 3)
+		})
+	}
+	m := NewVM()
+	if _, err := m.Process(GetWords(": ;"), "", 0); err == nil {
+		t.Fatal("empty name accepted")
+	}
+}
+
+func TestNestedControlFlow(t *testing.T) {
+	m := loadCore(t)
+	processTest(t, m, ": choose if 1 if 10 else 20 then else 30 then ; -1 choose 0 choose")
+	assertStack(t, m, 10, 30)
+	processTest(t, m, ": mixed 3 0 do i 1 = if 99 else i then loop ; mixed")
+	assertStack(t, m, 10, 30, 0, 99, 2)
+}
