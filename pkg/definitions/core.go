@@ -50,8 +50,8 @@ var Core = map[string]DefinitionFn{
 		left := m.Stack().Pop()
 		quotient := left / right
 		modulus := left % right
-		m.Stack().Push(quotient)
 		m.Stack().Push(modulus)
+		m.Stack().Push(quotient)
 		return 0, nil
 	},
 	">": func(m memory) (int, error) {
