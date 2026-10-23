@@ -1,11 +1,12 @@
 package main
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"runtime"
-	"strings"
 
 	"github.com/eiannone/keyboard"
 	"github.com/zoul0813/go-prosper/pkg/vm"
@@ -23,6 +24,13 @@ var (
 )
 
 func main() {
+	if err := run(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+func run() error {
 	fmt.Printf("Go Forth %v, Copyright (C) 2024 David Higgins <zoul0813@me.com>\nCompiled with %v\n", VERSION, runtime.Version())
 
 	cwd, _ := os.Getwd()
@@ -48,40 +56,33 @@ func main() {
 		for _, p := range corePaths {
 			fmt.Printf(". - %s\n", p)
 		}
-		return
+		return fmt.Errorf("core.f not found")
 	}
 
 	corePathRel, _ := filepath.Rel(cwd, corePath)
 	fmt.Printf("Core: %v\n", corePathRel)
-	core, err := os.ReadFile(corePath)
-	if err != nil {
-		fmt.Println("Failed to load core.f: ", err)
-		return
-	}
-
 	machine = vm.NewVM()
 	history = make([]string, 0, HISTORY_SIZE)
 	historyIndex = 0
-	// machine.SetMode(vm.Standard)
-	// scanner := bufio.NewScanner(os.Stdin)
-
-	for _, line := range strings.Split(string(core), "\n") {
-		if !strings.HasPrefix(line, "\\") {
-			words := vm.GetWords(line)
-			machine.Process(words, "", 0)
-		}
-		// fmt.Printf("DEFINE: %v\n", line)
+	if err := loadFile(machine, corePath); err != nil {
+		return err
 	}
-
+	for _, path := range os.Args[1:] {
+		if err := loadFile(machine, path); err != nil {
+			return err
+		}
+	}
 	machine.SetMode(vm.Standard)
 
 	keysEvents, err := keyboard.GetKeys(10)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	defer func() {
 		_ = keyboard.Close()
 	}()
+
+	machine.ReadKey = func() (rune, error) { return readKey(keysEvents) }
 
 	fmt.Printf("Type 'bye' to exit\n\n")
 	fmt.Print("> ")
@@ -89,9 +90,12 @@ func main() {
 	line := ""
 	exit := false
 	for {
-		event := <-keysEvents
+		event, ok := <-keysEvents
+		if !ok {
+			return io.EOF
+		}
 		if event.Err != nil {
-			panic(event.Err)
+			return event.Err
 		}
 
 		if event.Key == keyboard.KeyCtrlC {
@@ -130,6 +134,7 @@ func main() {
 			break
 		}
 	}
+	return nil
 }
 
 func backspace(line string) string {
@@ -196,30 +201,45 @@ func addToHistory(line string) {
 }
 
 func process(input string) bool {
-	defer func() {
-		if err := recover(); err != nil {
-			fmt.Printf("\n\nERROR\n")
-			fmt.Printf(" Indexes: S: %d, R: %v, D: %v\n", machine.Memory.Stack().Index, machine.Memory.ReturnStack().Index, machine.Memory.DataSpace().Index)
-			fmt.Printf("   Stack: <%-4d> %v\n", machine.Memory.Stack().Index, machine.Memory.Stack().Values[:32])
-			fmt.Printf("  Return: <%-4d> %v\n", machine.Memory.ReturnStack().Index, machine.Memory.ReturnStack().Values[:32])
-			fmt.Printf("    Data: <%-4d> %v\n", machine.Memory.DataSpace().Index, machine.Memory.DataSpace().Values[:32])
-			machine.Memory.Recover()
-			fmt.Printf("\n\npanic occurred: %v\n\n", err)
-		}
-	}()
-
-	// input := scanner.Text()
-	// words := input
-	// fmt.Printf("words: %v\n", words)
-	fmt.Printf(" ")
-	words := vm.GetWords(input)
-	_, err := machine.Process(words, "", 0)
-	if err != nil {
-		if err.Error() == "bye" {
+	fmt.Print(" ")
+	if err := machine.Execute(input); err != nil {
+		if errors.Is(err, vm.ErrBye) {
 			return true
 		}
-		fmt.Printf("\nprocess error: %v\n\n", err)
+		fmt.Printf("\nprocess error: %v\n> ", err)
+		return false
 	}
 	fmt.Printf(" ok\n> ")
 	return false
+}
+
+func loadFile(machine *vm.VM, path string) error {
+	source, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	if err := machine.Load(string(source)); err != nil {
+		return fmt.Errorf("%s: %w", path, err)
+	}
+	return nil
+}
+
+func readKey(events <-chan keyboard.KeyEvent) (rune, error) {
+	for event := range events {
+		if event.Err != nil {
+			return 0, event.Err
+		}
+		switch event.Key {
+		case keyboard.KeyCtrlC:
+			return 0, vm.ErrBye
+		case keyboard.KeySpace:
+			return ' ', nil
+		case keyboard.KeyEnter:
+			return '\n', nil
+		}
+		if event.Rune != 0 {
+			return event.Rune, nil
+		}
+	}
+	return 0, io.EOF
 }
