@@ -2,7 +2,6 @@ package definitions
 
 import (
 	"fmt"
-	"math"
 	"strconv"
 	"time"
 )
@@ -150,22 +149,23 @@ var Core = map[string]DefinitionFn{
 		return 0, nil
 	},
 	"abs": func(m memory) (int, error) {
-		abs := int(math.Abs(float64(m.Stack().Pop())))
+		abs := m.Stack().Pop()
+		if abs < 0 {
+			abs = -abs
+		}
 		m.Stack().Push(abs)
 		return 0, nil
 	},
 	"min": func(m memory) (int, error) {
-		n1 := float64(m.Stack().Pop())
-		n2 := float64(m.Stack().Pop())
-		min := int(math.Min(n1, n2))
-		m.Stack().Push(min)
+		n1 := m.Stack().Pop()
+		n2 := m.Stack().Pop()
+		m.Stack().Push(min(n1, n2))
 		return 0, nil
 	},
 	"max": func(m memory) (int, error) {
-		n1 := float64(m.Stack().Pop())
-		n2 := float64(m.Stack().Pop())
-		max := int(math.Max(n1, n2))
-		m.Stack().Push(max)
+		n1 := m.Stack().Pop()
+		n2 := m.Stack().Pop()
+		m.Stack().Push(max(n1, n2))
 		return 0, nil
 	},
 
