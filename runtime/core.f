@@ -146,6 +146,7 @@ create grid 16 cells allot
     dup
     i .row
   loop
+  drop
   ;
 
 

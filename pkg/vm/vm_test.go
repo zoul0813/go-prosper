@@ -132,3 +132,16 @@ func TestNestedControlFlow(t *testing.T) {
 	processTest(t, m, ": mixed 3 0 do i 1 = if 99 else i then loop ; mixed")
 	assertStack(t, m, 10, 30, 0, 99, 2)
 }
+
+func TestDrawPreservesStacks(t *testing.T) {
+	m := loadCore(t)
+	processTest(t, m, "123 456")
+	// More redraws than the old four-cell leak could fit on the stack.
+	for i := 0; i < STACK_SIZE/4+1; i++ {
+		processTest(t, m, "draw")
+		assertStack(t, m, 123, 456)
+		if m.Memory.ReturnStack().Index != 0 {
+			t.Fatal("draw leaked return stack cells")
+		}
+	}
+}
