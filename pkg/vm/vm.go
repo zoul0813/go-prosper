@@ -466,15 +466,10 @@ func (vm *VM) parse(words []string) ([]string, error) {
 			control.Push(len(compiled) - 1)
 
 		case "until":
-			// jump out of loop if 0
-			compiled = append(compiled, "?branch")
-			compiled = append(compiled, "2")
-
 			offset := control.Pop()
-			jump := (offset - (len(compiled) - 1 + 2))
-			// fmt.Printf("UNTIL : %v, %v, %v\n", offset, jump, len(compiled))
-			compiled = append(compiled, "branch")
-			compiled = append(compiled, fmt.Sprintf("%d", jump))
+			compiled = append(compiled, "?branch")
+			jump := offset - len(compiled)
+			compiled = append(compiled, strconv.Itoa(jump))
 
 		case "loop":
 			compiled = append(compiled, "2R>")

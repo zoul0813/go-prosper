@@ -61,3 +61,20 @@ func TestRotationAndDependentWords(t *testing.T) {
 		})
 	}
 }
+
+func TestUntil(t *testing.T) {
+	for _, tt := range []struct {
+		input string
+		want  []int
+	}{
+		{": count 0 begin 1 + dup 3 = until ; count", []int{3}},
+		{": once begin 42 -1 until ; once", []int{42}},
+		{": nested 0 begin 0 begin 1 + dup 2 = until + dup 4 = until ; nested", []int{4}},
+	} {
+		t.Run(tt.input, func(t *testing.T) {
+			m := NewVM()
+			processTest(t, m, tt.input)
+			assertStack(t, m, tt.want...)
+		})
+	}
+}
