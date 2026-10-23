@@ -483,7 +483,7 @@ func (vm *VM) parse(words []string) ([]string, error) {
 			compiled = append(compiled, "2DUP")
 			compiled = append(compiled, "=")
 			compiled = append(compiled, "ROT")
-			compiled = append(compiled, "SWAP")
+			compiled = append(compiled, "ROT")
 			compiled = append(compiled, "2>R")
 
 			offset := control.Pop()

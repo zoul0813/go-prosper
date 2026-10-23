@@ -81,8 +81,8 @@ func (s *Stack) Rotate() {
 	outer := s.Pop()
 	inner := s.Pop()
 	value := s.Pop()
-	s.Push(outer)
 	s.Push(inner)
+	s.Push(outer)
 	s.Push(value)
 }
 
