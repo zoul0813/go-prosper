@@ -235,7 +235,7 @@ func (vm *VM) Process(words []string, next string, skipBy int) (int, error) {
 					fmt.Printf("attempt to use zero-length string as a name")
 					continue
 				}
-				vword := fmt.Sprintf("%d", value)
+				vword := fmt.Sprintf("#%d", value)
 				vm.Memory.Dict().Define(name, vword, []string{vword})
 				// vm.Memory.Stack().Print("C", vm.Memory.NumberBase())
 			case ".\"":
@@ -425,6 +425,14 @@ func (vm *VM) parse(words []string) ([]string, error) {
 		case "(":
 			skipNext = true
 
+		case ".\"", "constant", "see", "branch", "?branch":
+			// These operands are strings, names, or decimal branch offsets.
+			compiled = append(compiled, word)
+			if index+1 < len(words) {
+				index++
+				compiled = append(compiled, words[index])
+			}
+
 		case "[char]":
 			if len(words) >= index+1 {
 				char, ok := getWord(words, index+1, "")
@@ -433,7 +441,7 @@ func (vm *VM) parse(words []string) ([]string, error) {
 				}
 				n := int(char[0])
 				index++
-				compiled = append(compiled, strconv.Itoa(n))
+				compiled = append(compiled, fmt.Sprintf("#%d", n))
 			} else {
 				return []string{}, fmt.Errorf("[char] ")
 			}
@@ -473,7 +481,7 @@ func (vm *VM) parse(words []string) ([]string, error) {
 
 		case "loop":
 			compiled = append(compiled, "2R>")
-			compiled = append(compiled, "1")
+			compiled = append(compiled, "#1")
 			compiled = append(compiled, "+")
 			compiled = append(compiled, "2DUP")
 			compiled = append(compiled, "=")
@@ -503,7 +511,11 @@ func (vm *VM) parse(words []string) ([]string, error) {
 		// 	compiled = append(compiled, "2DROP")
 
 		default:
-			// fmt.Printf("PASSTHRU: '%v'\n", word)
+			if _, defined := vm.Memory.Dict().Lookup(word); !defined {
+				if n, ok := numbers.Parse(word, vm.Memory.NumberBase()); ok {
+					word = fmt.Sprintf("#%d", n)
+				}
+			}
 			compiled = append(compiled, word)
 		}
 	}

@@ -78,3 +78,25 @@ func TestUntil(t *testing.T) {
 		})
 	}
 }
+
+func TestCompiledValuesIgnoreExecutionBase(t *testing.T) {
+	for _, tt := range []struct {
+		input string
+		want  []int
+	}{
+		{"10 constant ten hex ten", []int{10}},
+		{"-10 constant negative binary negative", []int{-10}},
+		{": ten 10 ; hex ten", []int{10}},
+		{"hex : sixteen 10 ; decimal sixteen", []int{16}},
+		{": char [char] A ; binary char", []int{65}},
+		{": indices 3 0 do i loop ; binary indices", []int{0, 1, 2}},
+		{": named 10 constant ff ; hex named ff", []int{10}},
+		{": conditional if 10 else 20 then ; binary -1 conditional 0 conditional", []int{10, 20}},
+	} {
+		t.Run(tt.input, func(t *testing.T) {
+			m := loadCore(t)
+			processTest(t, m, tt.input)
+			assertStack(t, m, tt.want...)
+		})
+	}
+}
